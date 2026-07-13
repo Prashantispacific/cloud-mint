@@ -577,8 +577,8 @@
         const url = `https://api.github.com/repos/${state.owner}/${state.repo}/git/trees/${state.branch}?recursive=true`;
         const response = await fetch(url, { headers: getApiHeaders() });
         
-        if (response.status === 404) {
-          // Empty repository or invalid configuration
+        // 404 (Not Found) or 409 (Conflict - empty repository) are treated as empty states
+        if (response.status === 404 || response.status === 409) {
           state.flatTree = [];
           state.treeNodes = new FileNode('root', '', 'folder');
           hideLoading();
@@ -587,14 +587,21 @@
         }
 
         if (!response.ok) {
-          throw new Error(`GitHub API Error: ${response.statusText}`);
+          let errorMsg = response.statusText || `HTTP ${response.status}`;
+          try {
+            const errData = await response.json();
+            if (errData && errData.message) {
+              errorMsg = errData.message;
+            }
+          } catch (e) {}
+          throw new Error(errorMsg);
         }
 
         const data = await response.json();
         state.flatTree = data.tree || [];
         state.treeNodes = buildDirectoryTree(state.flatTree);
       } catch (err) {
-        showError('Network/API Error', `Could not sync files from GitHub repository. Verify your repository ownership permissions and branch name.<br><br><span class="font-mono text-xs text-red-300">${err.message}</span>`);
+        showError('Network/API Error', `Could not sync files from GitHub repository. Verify your repository ownership permissions and branch name.<br><br><span class="font-mono text-xs text-red-300">GitHub API Error: ${err.message}</span>`);
       } finally {
         hideLoading();
       }
