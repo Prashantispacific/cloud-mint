@@ -1,0 +1,1494 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloud Mint — Private File Vault</title>
+  
+  <!-- Preconnect & Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Outfit', 'sans-serif'],
+          },
+          colors: {
+            slate: {
+              950: '#020617', // Cinematic deep dark
+              900: '#0f172a',
+              800: '#1e293b',
+              700: '#334155',
+            },
+            emerald: {
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+              900: '#064e3b',
+            }
+          },
+          animation: {
+            'fade-in': 'fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+            'slide-up': 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+            'pulse-slow': 'pulse 6s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+          },
+          keyframes: {
+            fadeIn: {
+              '0%': { opacity: '0' },
+              '100%': { opacity: '1' }
+            },
+            slideUp: {
+              '0%': { transform: 'translateY(12px)', opacity: '0' },
+              '100%': { transform: 'translateY(0)', opacity: '1' }
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Custom Cinematic Styles -->
+  <style>
+    body {
+      background-color: #020617;
+      color: #f1f5f9;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* Custom elegant scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.2);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(52, 211, 153, 0.2);
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(52, 211, 153, 0.4);
+    }
+
+    /* Ambient background mesh glow */
+    .ambient-glow {
+      background: radial-gradient(circle at 50% 30%, rgba(16, 185, 129, 0.06) 0%, transparent 55%);
+      pointer-events: none;
+    }
+
+    .glass-card {
+      background: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(51, 65, 85, 0.3);
+    }
+
+    .glass-input {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(51, 65, 85, 0.5);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .glass-input:focus {
+      border-color: rgba(52, 211, 153, 0.5);
+      box-shadow: 0 0 12px rgba(52, 211, 153, 0.15);
+      outline: none;
+    }
+
+    .file-row {
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .file-row:hover {
+      background: rgba(16, 185, 129, 0.03);
+      border-color: rgba(52, 211, 153, 0.15);
+    }
+
+    /* Interactive touch indicators */
+    .long-press-indicator {
+      transition: transform 0.6s linear, opacity 0.2s ease;
+      transform: scale(0);
+      opacity: 0;
+    }
+    .pressing .long-press-indicator {
+      transform: scale(1);
+      opacity: 0.15;
+    }
+  </style>
+</head>
+<body class="h-full relative select-none">
+
+  <!-- Glow Canvas -->
+  <div class="absolute inset-0 ambient-glow z-0"></div>
+  <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-[120px] animate-pulse-slow z-0"></div>
+  <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-500/5 rounded-full blur-[120px] animate-pulse-slow z-0" style="animation-delay: 3s;"></div>
+
+  <div class="relative z-10 min-h-full flex flex-col justify-between">
+    
+    <!-- MAIN CONTAINER -->
+    <main class="flex-grow flex items-center justify-center p-4 md:p-8">
+      
+      <!-- 1. AUTH SCREEN -->
+      <div id="auth-screen" class="w-full max-w-md animate-slide-up hidden">
+        <div class="glass-card rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+          <div class="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-emerald-400/40 to-transparent"></div>
+          
+          <div class="text-center mb-8">
+            <div class="inline-flex p-3 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 mb-4">
+              <!-- Custom Mint Icon -->
+              <svg class="w-8 h-8 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-.1-7.843-.218" />
+              </svg>
+            </div>
+            <h1 class="text-3xl font-display font-bold tracking-tight text-white">Cloud Mint</h1>
+            <p class="text-slate-400 text-sm mt-2">Private repository-backed file storage</p>
+          </div>
+
+          <form id="auth-form" class="space-y-5">
+            <!-- Dynamic repository config fields if not set on Netlify -->
+            <div id="repo-fields" class="space-y-4 hidden">
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">GitHub Repository</label>
+                <input type="text" id="input-repo" placeholder="username/private-repo" class="w-full glass-input rounded-xl px-4 py-3 text-white text-sm">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Branch</label>
+                <input type="text" id="input-branch" value="main" placeholder="main" class="w-full glass-input rounded-xl px-4 py-3 text-white text-sm">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Access Key</label>
+              <div class="relative">
+                <input type="password" id="input-password" placeholder="••••••••••••" class="w-full glass-input rounded-xl pl-4 pr-10 py-3 text-white text-sm" required>
+                <button type="button" id="toggle-password" class="absolute right-3 top-3.5 text-slate-500 hover:text-slate-300">
+                  <svg id="eye-icon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div id="auth-error" class="text-red-400 text-xs hidden flex items-center space-x-2">
+              <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+              <span id="auth-error-msg">Incorrect credentials.</span>
+            </div>
+
+            <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-slate-950 font-semibold py-3 px-4 rounded-xl transition-all duration-150 flex items-center justify-center space-x-2 shadow-lg shadow-emerald-500/20">
+              <span>Decrypt Vault</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7M21 12H3"/></svg>
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- 2. FILE MANAGER SCREEN -->
+      <div id="manager-screen" class="w-full max-w-6xl animate-slide-up hidden flex flex-col space-y-6">
+        
+        <!-- Header -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0 pb-4 border-b border-slate-800/40">
+          <div>
+            <div class="flex items-center space-x-3">
+              <span class="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
+                <svg class="w-6 h-6 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-.1-7.843-.218" />
+                </svg>
+              </span>
+              <div>
+                <h1 class="text-2xl font-display font-bold text-white leading-none">Cloud Mint</h1>
+                <p id="repo-badge" class="text-xs text-emerald-400/80 font-medium tracking-wide mt-1 font-mono uppercase bg-emerald-500/5 px-2 py-0.5 rounded border border-emerald-500/10 inline-block"></p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="flex items-center space-x-3 w-full md:w-auto justify-end">
+            <button id="btn-refresh" title="Force Reload Tree" class="p-3 bg-slate-900/50 border border-slate-800 rounded-xl hover:border-emerald-500/30 text-slate-400 hover:text-emerald-400 active:scale-95 transition-all">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+            </button>
+            <button id="btn-logout" class="flex items-center space-x-2 px-4 py-2.5 bg-slate-900/50 border border-slate-800 rounded-xl hover:border-red-500/20 text-slate-400 hover:text-red-400 active:scale-95 transition-all text-sm font-medium">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>
+              <span class="hidden sm:inline">Logout</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Action Bar: Search, New Folder, Upload -->
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+          <!-- Search -->
+          <div class="md:col-span-6 relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            </span>
+            <input type="text" id="search-input" placeholder="Search this vault..." class="w-full glass-input rounded-xl pl-10 pr-10 py-3 text-white text-sm placeholder-slate-500">
+            <button id="search-clear" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 hidden">
+              <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+
+          <!-- Quick Buttons -->
+          <div class="md:col-span-6 flex space-x-3 justify-end">
+            <button id="btn-new-folder" class="flex-grow md:flex-grow-0 flex items-center justify-center space-x-2 px-5 py-3 glass-card rounded-xl hover:border-emerald-500/30 text-emerald-400 active:scale-95 transition-all text-sm font-medium">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <span>New Folder</span>
+            </button>
+            
+            <label id="upload-label" class="flex-grow md:flex-grow-0 cursor-pointer flex items-center justify-center space-x-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold rounded-xl active:scale-95 transition-all text-sm shadow-lg shadow-emerald-500/10">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+              <span>Upload File</span>
+              <input type="file" id="file-upload" class="hidden">
+            </label>
+          </div>
+        </div>
+
+        <!-- Breadcrumbs -->
+        <div id="breadcrumbs" class="flex items-center space-x-2 text-sm text-slate-400 font-medium overflow-x-auto pb-1">
+          <!-- Rendered dynamically -->
+        </div>
+
+        <!-- File List Box -->
+        <div id="drop-zone" class="glass-card rounded-3xl overflow-hidden shadow-2xl relative">
+          <!-- Loading skeleton overlay -->
+          <div id="list-loading" class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm z-20 flex items-center justify-center hidden">
+            <div class="flex flex-col items-center space-y-3">
+              <svg class="animate-spin h-8 w-8 text-emerald-400" viewBox="0 0 24 24" fill="none">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span id="loading-text" class="text-sm font-medium text-emerald-400 tracking-wide">Syncing vault contents...</span>
+            </div>
+          </div>
+
+          <!-- Empty State (Empty repo or empty folder) -->
+          <div id="empty-state" class="p-16 text-center hidden flex flex-col items-center justify-center">
+            <div class="p-4 bg-slate-900/40 border border-slate-800 rounded-2xl mb-4 text-slate-500">
+              <svg class="w-10 h-10" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 012.008 1.24l.885 1.77a2.25 2.25 0 002.007 1.24h1.98a2.25 2.25 0 002.007-1.24l.885-1.77a2.25 2.25 0 012.007-1.24h3.86m-18 0h18M2.25 13.5l1.626-5.692A1.5 1.5 0 015.37 6.75h13.26a1.5 1.5 0 011.494 1.258L21.75 13.5m-19.5 0v5.25a2.25 2.25 0 002.25 2.25h13.5a2.25 2.25 0 002.25-2.25V13.5" /></svg>
+            </div>
+            <h3 class="text-lg font-semibold text-white">This folder is empty</h3>
+            <p class="text-slate-400 text-sm mt-1 max-w-xs">Drag & drop files here, or use the toolbar to add contents.</p>
+          </div>
+
+          <!-- Table/List Structure -->
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse min-w-[600px]">
+              <thead>
+                <tr class="border-b border-slate-800/60 bg-slate-900/20 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  <th class="py-4 px-6 w-3/5">Name</th>
+                  <th class="py-4 px-6 w-1/5">Size</th>
+                  <th class="py-4 px-6 w-1/5 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="file-list-body" class="divide-y divide-slate-900/30">
+                <!-- Rendered dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Footnote / Stats -->
+        <div class="flex justify-between items-center text-xs text-slate-500 font-mono px-2">
+          <span id="vault-stats">Vault: -- items (total --)</span>
+          <span>Cloud Mint v1.0.0</span>
+        </div>
+      </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="py-6 text-center text-xs text-slate-600 border-t border-slate-900/30 relative z-10">
+      <p>&copy; 2026 Cloud Mint. Secure ephemeral authorization protocol.</p>
+    </footer>
+
+    <!-- ==============================================
+         MODALS & OVERLAYS (Beautiful Glassmorphic UI)
+         ============================================== -->
+
+    <!-- 1. FOLDER CREATION MODAL -->
+    <div id="modal-folder" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden animate-fade-in">
+      <div class="glass-card rounded-2xl p-6 max-w-sm w-full shadow-2xl relative overflow-hidden animate-slide-up">
+        <h3 class="text-lg font-display font-semibold text-white mb-4">Create New Folder</h3>
+        <input type="text" id="folder-name-input" placeholder="Folder name..." class="w-full glass-input rounded-xl px-4 py-3 text-white text-sm mb-5">
+        <div class="flex space-x-3 justify-end">
+          <button id="btn-folder-cancel" class="px-4 py-2 border border-slate-800 hover:border-slate-700 text-slate-400 rounded-lg text-sm active:scale-95 transition-all">Cancel</button>
+          <button id="btn-folder-confirm" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-medium rounded-lg text-sm active:scale-95 transition-all">Create</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. ERROR OVERLAY (Strict file size limit warning) -->
+    <div id="modal-error" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden animate-fade-in">
+      <div class="glass-card border-red-500/20 rounded-2xl p-7 max-w-md w-full shadow-2xl relative overflow-hidden animate-slide-up">
+        <div class="absolute top-0 left-0 w-full h-[2px] bg-red-500/40"></div>
+        <div class="flex items-center space-x-3 mb-4">
+          <span class="p-2 bg-red-500/10 rounded-xl border border-red-500/20 text-red-400">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          </span>
+          <h3 class="text-lg font-display font-semibold text-white" id="error-title">Upload Aborted</h3>
+        </div>
+        <p class="text-slate-300 text-sm leading-relaxed mb-6" id="error-message">This file exceeds the 45MB security ceiling for client-side API streaming. Cloud Mint requires direct browser-to-GitHub streaming for transfers under 45MB to maintain performance integrity.</p>
+        <div class="flex justify-end">
+          <button id="btn-error-close" class="px-5 py-2.5 bg-slate-900 border border-slate-800 hover:border-slate-700 text-white rounded-xl text-sm font-semibold active:scale-95 transition-all">Understood</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. CUSTOM CONFIRM DELETE MODAL -->
+    <div id="modal-delete" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden animate-fade-in">
+      <div class="glass-card border-red-500/20 rounded-2xl p-6 max-w-sm w-full shadow-2xl relative overflow-hidden animate-slide-up">
+        <div class="absolute top-0 left-0 w-full h-[2px] bg-red-500/40"></div>
+        <h3 class="text-lg font-display font-semibold text-white mb-2">Delete Permanently?</h3>
+        <p id="delete-warning-text" class="text-slate-400 text-sm leading-relaxed mb-5"></p>
+        <div class="flex space-x-3 justify-end">
+          <button id="btn-delete-cancel" class="px-4 py-2 border border-slate-800 hover:border-slate-700 text-slate-400 rounded-lg text-sm active:scale-95 transition-all">Keep file</button>
+          <button id="btn-delete-confirm" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg text-sm active:scale-95 transition-all">Yes, Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. MOBILE / TOUCH ACTIONS BOTTOM SHEET -->
+    <div id="bottom-sheet" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-40 flex items-end justify-center hidden animate-fade-in">
+      <div class="glass-card rounded-t-3xl p-6 w-full max-w-xl shadow-2xl relative border-x-0 border-b-0 animate-slide-up">
+        <!-- Top notch drag bar aesthetic -->
+        <div class="w-12 h-1 bg-slate-800 rounded-full mx-auto mb-6"></div>
+        
+        <div class="flex items-center space-x-3 mb-6">
+          <span id="sheet-icon" class="p-3 bg-slate-900 rounded-2xl text-slate-400">
+            <!-- Icon rendered dynamically -->
+          </span>
+          <div class="overflow-hidden">
+            <h4 id="sheet-name" class="text-base font-semibold text-white truncate">Filename.txt</h4>
+            <p id="sheet-details" class="text-xs text-slate-400 mt-0.5">File size: -- • Path: /</p>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <button id="sheet-action-download" class="w-full flex items-center space-x-3 px-4 py-3.5 bg-slate-900/60 border border-slate-800/80 rounded-xl hover:border-emerald-500/30 text-left text-white text-sm font-semibold active:scale-98 transition-all">
+            <span class="text-emerald-400">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+            </span>
+            <span>Download</span>
+          </button>
+          
+          <button id="sheet-action-copy" class="w-full flex items-center space-x-3 px-4 py-3.5 bg-slate-900/60 border border-slate-800/80 rounded-xl hover:border-emerald-500/30 text-left text-white text-sm font-semibold active:scale-98 transition-all">
+            <span class="text-slate-400">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/></svg>
+            </span>
+            <span>Copy Full Path</span>
+          </button>
+          
+          <button id="sheet-action-delete" class="w-full flex items-center space-x-3 px-4 py-3.5 bg-red-500/10 border border-red-500/20 rounded-xl hover:bg-red-500/20 text-left text-red-400 text-sm font-semibold active:scale-98 transition-all">
+            <span>
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>
+            </span>
+            <span>Delete Permanently</span>
+          </button>
+          
+          <button id="sheet-close" class="w-full text-center py-3.5 text-slate-400 text-sm font-medium hover:text-white mt-2">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ==============================================
+       CORE RUNTIME JAVASCRIPT MODULE
+       ============================================== -->
+  <script type="module">
+    
+    // SVG icons definitions dictionary (reusable design library)
+    const Icons = {
+      folder: `<svg class="w-6 h-6 text-emerald-400/80" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-19.5 0A2.25 2.25 0 004.5 15h15a2.25 2.25 0 002.25-2.25m-19.5 0v.25A2.25 2.25 0 004.5 17.25h15a2.25 2.25 0 002.25-2.25v-.25M9 3h1.378a2.25 2.25 0 011.603.682l1.63 1.83A2.25 2.25 0 0015.223 6.25H21A2.25 2.25 0 0123.25 8.5v3.25" /></svg>`,
+      file: `<svg class="w-6 h-6 text-slate-400/80" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>`,
+      image: `<svg class="w-6 h-6 text-sky-400/80" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375 0 11-.75 0 .375 0 01.75 0z" /></svg>`,
+      pdf: `<svg class="w-6 h-6 text-red-400/80" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /><text x="6" y="19" font-family="system-ui" font-size="6" font-weight="bold" fill="currentColor">PDF</text></svg>`,
+      code: `<svg class="w-6 h-6 text-purple-400/80" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" /></svg>`,
+      archive: `<svg class="w-6 h-6 text-amber-500/80" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>`,
+      audio: `<svg class="w-6 h-6 text-pink-400/80" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 0v11.25m0-11.25a2.25 2.25 0 00-2.25-2.25h-.375a2.25 2.25 0 00-2.25 2.25v11.25m3.75-1.5a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM9 19.5a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0z" /></svg>`,
+      video: `<svg class="w-6 h-6 text-fuchsia-400/80" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12l-4.5-3v6l4.5-3z" /></svg>`,
+      
+      download: `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>`,
+      copy: `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/></svg>`,
+      delete: `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>`,
+      ellipsis: `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" /></svg>`
+    };
+
+    // Helper to determine icon type by file extension
+    function getFileIcon(filename, type) {
+      if (type === 'folder') return Icons.folder;
+      const ext = filename.split('.').pop().toLowerCase();
+      
+      const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp', 'tiff'];
+      const pdfExts = ['pdf'];
+      const codeExts = ['html', 'css', 'js', 'ts', 'jsx', 'tsx', 'json', 'py', 'go', 'rs', 'sh', 'yml', 'yaml', 'md', 'xml', 'php', 'c', 'cpp', 'java'];
+      const archiveExts = ['zip', 'rar', 'tar', 'gz', '7z', 'bz2', 'xz'];
+      const audioExts = ['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac'];
+      const videoExts = ['mp4', 'mkv', 'avi', 'mov', 'wmv', 'webm', 'flv'];
+
+      if (imageExts.includes(ext)) return Icons.image;
+      if (pdfExts.includes(ext)) return Icons.pdf;
+      if (codeExts.includes(ext)) return Icons.code;
+      if (archiveExts.includes(ext)) return Icons.archive;
+      if (audioExts.includes(ext)) return Icons.audio;
+      if (videoExts.includes(ext)) return Icons.video;
+      return Icons.file;
+    }
+
+    // Standard human-readable byte formats
+    function formatBytes(bytes, decimals = 1) {
+      if (bytes === 0 || !bytes) return '--';
+      const k = 1024;
+      const dm = decimals < 0 ? 0 : decimals;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+
+    // App core state
+    const state = {
+      token: null,
+      owner: null,
+      repo: null,
+      branch: 'main',
+      currentPath: '', // e.g. "documents/pdf"
+      treeNodes: null, // Root node parsed tree
+      flatTree: [],    // Flat tree API raw array
+      searchQuery: '',
+      activeMenuNode: null, // Active context-menu element details
+      longPressTimer: null,
+      isPressing: false
+    };
+
+    // Directory Tree Node Class for representation
+    class FileNode {
+      constructor(name, path, type, sha = null, size = 0) {
+        this.name = name;
+        this.path = path;
+        this.type = type; // 'folder' or 'file'
+        this.sha = sha;
+        this.size = size;
+        this.children = {}; // key: name, value: FileNode
+      }
+
+      get isFolder() {
+        return this.type === 'folder';
+      }
+    }
+
+    // Build hierarchical tree out of flat list returned by Git Trees API
+    function buildDirectoryTree(flatList) {
+      const root = new FileNode('root', '', 'folder');
+      
+      flatList.forEach(item => {
+        // Skip specific files we want to hide
+        const name = item.path.split('/').pop();
+        if (name === '.gitkeep' || name === '.mintkeep') {
+          return;
+        }
+
+        const parts = item.path.split('/');
+        let current = root;
+        let currentPath = '';
+
+        for (let i = 0; i < parts.length; i++) {
+          const part = parts[i];
+          currentPath = currentPath ? `${currentPath}/${part}` : part;
+          const isLast = (i === parts.length - 1);
+          
+          if (!current.children[part]) {
+            // Determine type: if it's the last element, match item type, else intermediate folders are folders
+            const nodeType = isLast ? (item.type === 'tree' ? 'folder' : 'file') : 'folder';
+            current.children[part] = new FileNode(
+              part,
+              currentPath,
+              nodeType,
+              isLast ? item.sha : null,
+              isLast ? (item.size || 0) : 0
+            );
+          }
+          current = current.children[part];
+        }
+      });
+
+      return root;
+    }
+
+    // Resolve directory tree node from relative folder path string
+    function getNodeByPath(rootNode, pathString) {
+      if (!pathString) return rootNode;
+      const parts = pathString.split('/');
+      let current = rootNode;
+      for (const part of parts) {
+        if (current && current.children[part]) {
+          current = current.children[part];
+        } else {
+          return null; // Path resolved to nothing
+        }
+      }
+      return current;
+    }
+
+    // ==============================================
+    // SERVER / GITHUB API INTERACTOR WRAPPERS
+    // ==============================================
+
+    // Netlify proxy function authentication
+    async function checkAuth(password, repoConfig = null) {
+      const payload = { password };
+      const response = await fetch('/.netlify/functions/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Authentication failed');
+      }
+
+      const data = await response.json();
+      
+      // If the server didn't pre-configure repo details, fallback to UI parameters
+      return {
+        token: data.token,
+        owner: data.owner || (repoConfig ? repoConfig.owner : null),
+        repo: data.repo || (repoConfig ? repoConfig.repo : null),
+        branch: data.branch || (repoConfig ? repoConfig.branch : 'main')
+      };
+    }
+
+    // API Headers wrapper
+    function getApiHeaders() {
+      return {
+        'Authorization': `Bearer ${state.token}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      };
+    }
+
+    // Fetch repository flat file tree recursively
+    async function fetchRepoTree() {
+      showLoading('Syncing vault structure...');
+      try {
+        const url = `https://api.github.com/repos/${state.owner}/${state.repo}/git/trees/${state.branch}?recursive=true`;
+        const response = await fetch(url, { headers: getApiHeaders() });
+        
+        if (response.status === 404) {
+          // Empty repository or invalid configuration
+          state.flatTree = [];
+          state.treeNodes = new FileNode('root', '', 'folder');
+          hideLoading();
+          render();
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(`GitHub API Error: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        state.flatTree = data.tree || [];
+        state.treeNodes = buildDirectoryTree(state.flatTree);
+      } catch (err) {
+        showError('Network/API Error', `Could not sync files from GitHub repository. Verify your repository ownership permissions and branch name.<br><br><span class="font-mono text-xs text-red-300">${err.message}</span>`);
+      } finally {
+        hideLoading();
+      }
+      render();
+    }
+
+    // Upload file directly to GitHub API (Bypassing Netlify proxy)
+    async function uploadToGithub(file, base64Content, existingSha = null) {
+      showLoading(`Streaming ${file.name} to storage...`);
+      const targetPath = state.currentPath ? `${state.currentPath}/${file.name}` : file.name;
+      const url = `https://api.github.com/repos/${state.owner}/${state.repo}/contents/${targetPath}`;
+      
+      const payload = {
+        message: `Upload ${file.name} via Cloud Mint`,
+        content: base64Content,
+        branch: state.branch
+      };
+
+      if (existingSha) {
+        payload.sha = existingSha;
+      }
+
+      try {
+        const response = await fetch(url, {
+          method: 'PUT',
+          headers: getApiHeaders(),
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.message || 'API upload error');
+        }
+
+        await fetchRepoTree(); // Reload tree structure
+      } catch (err) {
+        showError('Upload Failure', `Could not stream file directly to GitHub API: <br><br><span class="font-mono text-xs text-red-300">${err.message}</span>`);
+        hideLoading();
+      }
+    }
+
+    // Delete single file/folder
+    async function deleteFromGithub(item) {
+      if (item.type === 'folder') {
+        // Deleting a folder in git requires deleting all files inside it
+        showLoading(`Cleaning directory: ${item.name}...`);
+        
+        // Find all descendants
+        const prefix = item.path + '/';
+        const descendants = state.flatTree.filter(f => f.path.startsWith(prefix) && f.type === 'blob');
+        
+        if (descendants.length === 0) {
+          // If empty in API but exists (probably has a hidden .gitkeep or dummy we filtered out)
+          // Look for any raw files in the flat list matching prefix including gitkeep
+          const allDescendantsIncludingHidden = state.flatTree.filter(f => f.path.startsWith(prefix));
+          
+          if (allDescendantsIncludingHidden.length === 0) {
+            // Truly empty locally, just refresh
+            await fetchRepoTree();
+            return;
+          }
+          
+          // Delete those hidden files
+          for (const desc of allDescendantsIncludingHidden) {
+            await deleteSingleFile(desc.path, desc.sha);
+          }
+        } else {
+          // Delete all recursive blobs
+          for (const desc of descendants) {
+            await deleteSingleFile(desc.path, desc.sha);
+          }
+        }
+        
+        await fetchRepoTree();
+      } else {
+        showLoading(`Removing ${item.name}...`);
+        try {
+          await deleteSingleFile(item.path, item.sha);
+          await fetchRepoTree();
+        } catch (err) {
+          showError('Deletion Error', `Could not delete target file: <br><br><span class="font-mono text-xs text-red-300">${err.message}</span>`);
+          hideLoading();
+        }
+      }
+    }
+
+    async function deleteSingleFile(path, sha) {
+      const url = `https://api.github.com/repos/${state.owner}/${state.repo}/contents/${path}`;
+      const payload = {
+        message: `Delete ${path} via Cloud Mint`,
+        sha: sha,
+        branch: state.branch
+      };
+
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: getApiHeaders(),
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || 'API file delete error');
+      }
+    }
+
+    // Create empty folder via .gitkeep
+    async function createFolderOnGithub(folderName) {
+      showLoading(`Provisioning directory: ${folderName}...`);
+      const fullPath = state.currentPath ? `${state.currentPath}/${folderName}/.gitkeep` : `${folderName}/.gitkeep`;
+      const url = `https://api.github.com/repos/${state.owner}/${state.repo}/contents/${fullPath}`;
+      
+      const payload = {
+        message: `Create folder ${folderName} via Cloud Mint`,
+        content: btoa(''), // Empty content base64 encoded
+        branch: state.branch
+      };
+
+      try {
+        const response = await fetch(url, {
+          method: 'PUT',
+          headers: getApiHeaders(),
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.message || 'API folder creation error');
+        }
+
+        await fetchRepoTree();
+      } catch (err) {
+        showError('Directory Error', `Could not create directory: <br><br><span class="font-mono text-xs text-red-300">${err.message}</span>`);
+        hideLoading();
+      }
+    }
+
+    // Download file locally using authenticated fetch (avoiding 404 on private repositories)
+    async function downloadFileContent(path, filename) {
+      showLoading(`Preparing secure download...`);
+      try {
+        const url = `https://api.github.com/repos/${state.owner}/${state.repo}/contents/${path}`;
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Accept': 'application/vnd.github.v3.raw' // Raw body bytes stream
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Download endpoint failed: ${response.statusText}`);
+        }
+
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        
+        const trigger = document.createElement('a');
+        trigger.href = blobUrl;
+        trigger.download = filename;
+        document.body.appendChild(trigger);
+        trigger.click();
+        
+        document.body.removeChild(trigger);
+        URL.revokeObjectURL(blobUrl);
+      } catch (err) {
+        showError('Download Failure', `Failed to download file from private vault: <br><br><span class="font-mono text-xs text-red-300">${err.message}</span>`);
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // ==============================================
+    // DOM CONTROLLERS & RENDERING ENGINE
+    // ==============================================
+
+    const dom = {
+      authScreen: document.getElementById('auth-screen'),
+      managerScreen: document.getElementById('manager-screen'),
+      authForm: document.getElementById('auth-form'),
+      repoFields: document.getElementById('repo-fields'),
+      inputPassword: document.getElementById('input-password'),
+      togglePassword: document.getElementById('toggle-password'),
+      eyeIcon: document.getElementById('eye-icon'),
+      inputRepo: document.getElementById('input-repo'),
+      inputBranch: document.getElementById('input-branch'),
+      authError: document.getElementById('auth-error'),
+      authErrorMsg: document.getElementById('auth-error-msg'),
+      
+      repoBadge: document.getElementById('repo-badge'),
+      btnRefresh: document.getElementById('btn-refresh'),
+      btnLogout: document.getElementById('btn-logout'),
+      
+      searchInput: document.getElementById('search-input'),
+      searchClear: document.getElementById('search-clear'),
+      btnNewFolder: document.getElementById('btn-new-folder'),
+      fileUpload: document.getElementById('file-upload'),
+      
+      breadcrumbs: document.getElementById('breadcrumbs'),
+      dropZone: document.getElementById('drop-zone'),
+      listLoading: document.getElementById('list-loading'),
+      loadingText: document.getElementById('loading-text'),
+      emptyState: document.getElementById('empty-state'),
+      fileListBody: document.getElementById('file-list-body'),
+      vaultStats: document.getElementById('vault-stats'),
+      
+      modalFolder: document.getElementById('modal-folder'),
+      folderNameInput: document.getElementById('folder-name-input'),
+      btnFolderCancel: document.getElementById('btn-folder-cancel'),
+      btnFolderConfirm: document.getElementById('btn-folder-confirm'),
+      
+      modalError: document.getElementById('modal-error'),
+      errorTitle: document.getElementById('error-title'),
+      errorMessage: document.getElementById('error-message'),
+      btnErrorClose: document.getElementById('btn-error-close'),
+      
+      modalDelete: document.getElementById('modal-delete'),
+      deleteWarningText: document.getElementById('delete-warning-text'),
+      btnDeleteCancel: document.getElementById('btn-delete-cancel'),
+      btnDeleteConfirm: document.getElementById('btn-delete-confirm'),
+      
+      bottomSheet: document.getElementById('bottom-sheet'),
+      sheetIcon: document.getElementById('sheet-icon'),
+      sheetName: document.getElementById('sheet-name'),
+      sheetDetails: document.getElementById('sheet-details'),
+      sheetActionDownload: document.getElementById('sheet-action-download'),
+      sheetActionCopy: document.getElementById('sheet-action-copy'),
+      sheetActionDelete: document.getElementById('sheet-action-delete'),
+      sheetClose: document.getElementById('sheet-close')
+    };
+
+    // Toggle loading states
+    function showLoading(text) {
+      dom.loadingText.textContent = text || 'Syncing...';
+      dom.listLoading.classList.remove('hidden');
+    }
+
+    function hideLoading() {
+      dom.listLoading.classList.add('hidden');
+    }
+
+    // Toggle error dialogs
+    function showError(title, message) {
+      dom.errorTitle.textContent = title;
+      dom.errorMessage.innerHTML = message;
+      dom.modalError.classList.remove('hidden');
+    }
+
+    // Populate Breadcrumbs element
+    function renderBreadcrumbs() {
+      dom.breadcrumbs.innerHTML = '';
+      
+      // Root element
+      const rootLink = document.createElement('button');
+      rootLink.className = 'flex items-center space-x-1 hover:text-emerald-400 focus:outline-none transition-colors';
+      rootLink.innerHTML = `
+        <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+        </svg>
+        <span class="font-display font-medium">Vault</span>
+      `;
+      rootLink.addEventListener('click', () => {
+        state.currentPath = '';
+        render();
+      });
+      dom.breadcrumbs.appendChild(rootLink);
+
+      if (!state.currentPath) return;
+
+      const segments = state.currentPath.split('/');
+      let pathAccumulator = '';
+
+      segments.forEach((seg, index) => {
+        pathAccumulator = pathAccumulator ? `${pathAccumulator}/${seg}` : seg;
+        
+        // Chevron divider
+        const chevron = document.createElement('span');
+        chevron.className = 'text-slate-600 select-none';
+        chevron.innerHTML = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>`;
+        dom.breadcrumbs.appendChild(chevron);
+
+        const link = document.createElement('button');
+        link.className = 'hover:text-emerald-400 focus:outline-none transition-colors truncate max-w-[120px] sm:max-w-none';
+        link.textContent = seg;
+        
+        // Block scoping variable
+        const targetPath = pathAccumulator;
+        link.addEventListener('click', () => {
+          state.currentPath = targetPath;
+          render();
+        });
+        dom.breadcrumbs.appendChild(link);
+      });
+    }
+
+    // Master list renderer
+    function render() {
+      // 1. Render Breadcrumbs
+      renderBreadcrumbs();
+
+      // 2. Fetch current path nodes
+      const currentNode = getNodeByPath(state.treeNodes, state.currentPath);
+      
+      let items = [];
+      if (currentNode) {
+        items = Object.values(currentNode.children);
+      }
+
+      // If search query is present, bypass tree nesting and search globally
+      const searchActive = state.searchQuery.trim().length > 0;
+      if (searchActive) {
+        const query = state.searchQuery.toLowerCase();
+        // Flatten directory search results
+        items = [];
+        
+        const traverseAndSearch = (node) => {
+          if (!node) return;
+          Object.values(node.children).forEach(child => {
+            if (child.name.toLowerCase().includes(query)) {
+              items.push(child);
+            }
+            if (child.isFolder) {
+              traverseAndSearch(child);
+            }
+          });
+        };
+        traverseAndSearch(state.treeNodes);
+      }
+
+      // Sort items: Folders first, then Files alphabetically
+      items.sort((a, b) => {
+        if (a.isFolder && !b.isFolder) return -1;
+        if (!a.isFolder && b.isFolder) return 1;
+        return a.name.localeCompare(b.name);
+      });
+
+      // Clear list table body
+      dom.fileListBody.innerHTML = '';
+
+      if (items.length === 0) {
+        dom.emptyState.classList.remove('hidden');
+        dom.fileListBody.parentElement.classList.add('hidden');
+        
+        // Vault stats
+        dom.vaultStats.textContent = searchActive ? 'No search matches found' : 'Vault: 0 items';
+        return;
+      }
+
+      dom.emptyState.classList.add('hidden');
+      dom.fileListBody.parentElement.classList.remove('hidden');
+
+      let filesCount = 0;
+      let totalBytes = 0;
+
+      items.forEach(item => {
+        if (!item.isFolder) {
+          filesCount++;
+          totalBytes += item.size;
+        }
+
+        const row = document.createElement('tr');
+        row.className = 'group border-b border-slate-900/20 hover:bg-slate-900/10 cursor-pointer select-none relative file-row';
+        
+        // Construct visual cells
+        const iconHtml = getFileIcon(item.name, item.type);
+        const nameDisplay = searchActive ? item.path : item.name;
+
+        // Custom touch long press triggers
+        let pressTimer = null;
+        let isPressing = false;
+
+        const startLongPress = (e) => {
+          // If desktop right click, bypass
+          if (e.type === 'mousedown' && e.button !== 0) return;
+          
+          isPressing = true;
+          row.classList.add('pressing');
+          
+          pressTimer = setTimeout(() => {
+            if (isPressing) {
+              openContextMenu(item);
+              cancelLongPress();
+            }
+          }, 600); // 600ms hold time
+        };
+
+        const cancelLongPress = () => {
+          isPressing = false;
+          row.classList.remove('pressing');
+          if (pressTimer) clearTimeout(pressTimer);
+        };
+
+        // Attach long press listeners
+        row.addEventListener('mousedown', startLongPress);
+        row.addEventListener('touchstart', startLongPress, { passive: true });
+        
+        row.addEventListener('mouseup', cancelLongPress);
+        row.addEventListener('mouseleave', cancelLongPress);
+        row.addEventListener('touchend', cancelLongPress);
+        row.addEventListener('touchmove', cancelLongPress, { passive: true });
+
+        // Double click/tap triggers
+        row.addEventListener('dblclick', () => {
+          if (item.isFolder) {
+            state.currentPath = item.path;
+            render();
+          } else {
+            downloadFileContent(item.path, item.name);
+          }
+        });
+
+        // Touch event to simulate double click or open menu
+        let lastTap = 0;
+        row.addEventListener('click', (e) => {
+          // Check if click is on action buttons inside the row
+          if (e.target.closest('.action-btn') || e.target.closest('.ellipsis-btn')) return;
+
+          const now = Date.now();
+          if (now - lastTap < 300) {
+            // Double click simulation
+            if (item.isFolder) {
+              state.currentPath = item.path;
+              render();
+            } else {
+              downloadFileContent(item.path, item.name);
+            }
+          } else {
+            // Single tap on mobile does not expand by default, it prompts actions context menu
+            if (window.innerWidth < 768) {
+              // Wait a little before showing context menu to ensure no double-click is intended
+              setTimeout(() => {
+                if (Date.now() - lastTap >= 300) {
+                  openContextMenu(item);
+                }
+              }, 300);
+            }
+          }
+          lastTap = now;
+        });
+
+        // Size display string
+        let sizeDisplay = '--';
+        if (!item.isFolder) {
+          sizeDisplay = formatBytes(item.size);
+        } else {
+          // Count items inside folders
+          const childKeys = Object.keys(item.children);
+          sizeDisplay = childKeys.length === 1 ? '1 item' : `${childKeys.length} items`;
+        }
+
+        row.innerHTML = `
+          <!-- Name Cell -->
+          <td class="py-5 px-6 flex items-center space-x-4 max-w-0 md:max-w-none">
+            <span class="flex-shrink-0">${iconHtml}</span>
+            <span class="text-white font-medium text-sm truncate font-sans">${nameDisplay}</span>
+          </td>
+          
+          <!-- Size Cell -->
+          <td class="py-5 px-6 text-slate-400 text-sm font-medium font-sans">
+            ${sizeDisplay}
+          </td>
+          
+          <!-- Actions Cell -->
+          <td class="py-5 px-6 text-right relative">
+            
+            <!-- Ellipsis icon for mobile touch accessibility -->
+            <button class="ellipsis-btn md:hidden p-2 text-slate-500 hover:text-white rounded-lg hover:bg-slate-900/80 transition-all inline-block align-middle">
+              ${Icons.ellipsis}
+            </button>
+
+            <!-- Hover Actions for Desktop -->
+            <div class="hidden md:flex items-center justify-end space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              ${!item.isFolder ? `
+                <button title="Download" class="action-btn p-2 text-slate-400 hover:text-emerald-400 rounded-lg hover:bg-slate-900/60 active:scale-95 transition-all">
+                  ${Icons.download}
+                </button>
+              ` : ''}
+              <button title="Copy Path" class="action-btn p-2 text-slate-400 hover:text-emerald-400 rounded-lg hover:bg-slate-900/60 active:scale-95 transition-all">
+                ${Icons.copy}
+              </button>
+              <button title="Delete" class="action-btn p-2 text-slate-400 hover:text-red-400 rounded-lg hover:bg-slate-900/60 active:scale-95 transition-all">
+                ${Icons.delete}
+              </button>
+            </div>
+          </td>
+        `;
+
+        // Register actions on desktop hover triggers
+        const btns = row.querySelectorAll('.action-btn');
+        let btnIdx = 0;
+        
+        if (!item.isFolder) {
+          const dlBtn = btns[btnIdx++];
+          dlBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            downloadFileContent(item.path, item.name);
+          });
+        }
+
+        const copyBtn = btns[btnIdx++];
+        copyBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          navigator.clipboard.writeText(item.path);
+          showToast('Path copied to clipboard!');
+        });
+
+        const deleteBtn = btns[btnIdx++];
+        deleteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          promptDelete(item);
+        });
+
+        // Ellipsis button hook for touch layout toggling
+        const ellipsis = row.querySelector('.ellipsis-btn');
+        if (ellipsis) {
+          ellipsis.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openContextMenu(item);
+          });
+        }
+
+        dom.fileListBody.appendChild(row);
+      });
+
+      // Update statistics panel
+      if (searchActive) {
+        dom.vaultStats.textContent = `Search results: ${items.length} items found`;
+      } else {
+        dom.vaultStats.textContent = `Vault: ${filesCount} files in current folder (${formatBytes(totalBytes)})`;
+      }
+    }
+
+    // ==============================================
+    // CONTEXT MENU & MODAL ACTIONS
+    // ==============================================
+
+    // Slide up bottom context menu (touch interface)
+    function openContextMenu(item) {
+      state.activeMenuNode = item;
+      dom.sheetName.textContent = item.name;
+      
+      const fileTypeIcon = getFileIcon(item.name, item.type);
+      dom.sheetIcon.innerHTML = fileTypeIcon;
+
+      let detailString = '';
+      if (item.isFolder) {
+        const childCount = Object.keys(item.children).length;
+        detailString = `${childCount} items • Path: /${item.path}`;
+        dom.sheetActionDownload.classList.add('hidden'); // Folders can't be downloaded directly
+      } else {
+        detailString = `${formatBytes(item.size)} • Path: /${item.path}`;
+        dom.sheetActionDownload.classList.remove('hidden');
+      }
+      dom.sheetDetails.textContent = detailString;
+
+      dom.bottomSheet.classList.remove('hidden');
+    }
+
+    function closeContextMenu() {
+      dom.bottomSheet.classList.add('hidden');
+      state.activeMenuNode = null;
+    }
+
+    // Toast notifications generator
+    function showToast(message) {
+      const toast = document.createElement('div');
+      toast.className = 'fixed bottom-6 right-6 z-50 glass-card border-emerald-500/30 px-5 py-3 rounded-xl shadow-xl flex items-center space-x-2 text-emerald-400 text-sm font-medium animate-slide-up';
+      toast.innerHTML = `
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+        <span>${message}</span>
+      `;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.classList.add('opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 2500);
+    }
+
+    // Deletion Prompts
+    function promptDelete(item) {
+      state.activeMenuNode = item;
+      if (item.isFolder) {
+        dom.deleteWarningText.innerHTML = `Are you sure you want to delete folder <span class="text-white font-semibold">${item.name}</span> and all its contents recursively? This operation cannot be undone.`;
+      } else {
+        dom.deleteWarningText.innerHTML = `Are you sure you want to delete <span class="text-white font-semibold">${item.name}</span> permanently? This operation cannot be undone.`;
+      }
+      dom.modalDelete.classList.remove('hidden');
+    }
+
+    // ==============================================
+    // EVENT REGISTER MECHANISMS
+    // ==============================================
+
+    // Init state checks & environment bootstrapper
+    window.addEventListener('DOMContentLoaded', () => {
+      const cachedToken = sessionStorage.getItem('mint_token');
+      const cachedOwner = localStorage.getItem('mint_owner') || sessionStorage.getItem('mint_owner');
+      const cachedRepo = localStorage.getItem('mint_repo') || sessionStorage.getItem('mint_repo');
+      const cachedBranch = localStorage.getItem('mint_branch') || sessionStorage.getItem('mint_branch') || 'main';
+
+      // Perform a check on Netlify auth parameters
+      // If server has pre-set credentials, we can skip showing manual repository setup
+      fetch('/.netlify/functions/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: '' }) // blank password request is rejected but returns 400 with config details
+      })
+      .then(res => res.json())
+      .catch(() => ({}))
+      .then(data => {
+        // If owner or repo configuration variables are missing on the server, prompt manual configurations
+        const serverHasConfig = (data && data.owner !== undefined && data.owner !== null);
+        if (!serverHasConfig) {
+          dom.repoFields.classList.remove('hidden');
+          if (cachedOwner) dom.inputRepo.value = `${cachedOwner}/${cachedRepo}`;
+          if (cachedBranch) dom.inputBranch.value = cachedBranch;
+        }
+
+        if (cachedToken && cachedOwner && cachedRepo) {
+          state.token = cachedToken;
+          state.owner = cachedOwner;
+          state.repo = cachedRepo;
+          state.branch = cachedBranch;
+          
+          showMainScreen();
+          fetchRepoTree();
+        } else {
+          dom.authScreen.classList.remove('hidden');
+        }
+      });
+    });
+
+    // Helper: Show Main File Manager
+    function showMainScreen() {
+      dom.authScreen.classList.add('hidden');
+      dom.managerScreen.classList.remove('hidden');
+      dom.repoBadge.textContent = `${state.owner}/${state.repo}:${state.branch}`;
+    }
+
+    // Password view toggle
+    dom.togglePassword.addEventListener('click', () => {
+      const type = dom.inputPassword.getAttribute('type') === 'password' ? 'text' : 'password';
+      dom.inputPassword.setAttribute('type', type);
+      if (type === 'text') {
+        dom.eyeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.815 0a3 3 0 01-3.143 3.143m3.143-3.143L21 21m-8.228-8.228l-3.65-3.65m0 0a3 3 0 10-4.243 4.243m4.242-4.243L12 12" />`;
+      } else {
+        dom.eyeIcon.innerHTML = `<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>`;
+      }
+    });
+
+    // Login Form Submission
+    dom.authForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      dom.authError.classList.add('hidden');
+      
+      const pwd = dom.inputPassword.value;
+      let repoConfig = null;
+
+      // Extract custom configuration from input box if visible
+      if (!dom.repoFields.classList.contains('hidden')) {
+        const repoVal = dom.inputRepo.value.trim();
+        const branchVal = dom.inputBranch.value.trim() || 'main';
+
+        if (!repoVal || !repoVal.includes('/')) {
+          dom.authErrorMsg.textContent = 'Please enter repository path in "owner/repository" format.';
+          dom.authError.classList.remove('hidden');
+          return;
+        }
+
+        const [owner, repo] = repoVal.split('/');
+        repoConfig = { owner, repo, branch: branchVal };
+      }
+
+      try {
+        const authResult = await checkAuth(pwd, repoConfig);
+        
+        state.token = authResult.token;
+        state.owner = authResult.owner;
+        state.repo = authResult.repo;
+        state.branch = authResult.branch;
+
+        // Persist token in session storage
+        sessionStorage.setItem('mint_token', state.token);
+        sessionStorage.setItem('mint_owner', state.owner);
+        sessionStorage.setItem('mint_repo', state.repo);
+        sessionStorage.setItem('mint_branch', state.branch);
+
+        // Store repository definitions in persistent localStorage (safe repository metadata)
+        localStorage.setItem('mint_owner', state.owner);
+        localStorage.setItem('mint_repo', state.repo);
+        localStorage.setItem('mint_branch', state.branch);
+
+        showMainScreen();
+        fetchRepoTree();
+
+      } catch (err) {
+        dom.authErrorMsg.textContent = err.message || 'Verification rejected.';
+        dom.authError.classList.remove('hidden');
+      }
+    });
+
+    // Logout
+    dom.btnLogout.addEventListener('click', () => {
+      sessionStorage.clear();
+      state.token = null;
+      state.owner = null;
+      state.repo = null;
+      state.branch = 'main';
+      state.currentPath = '';
+      state.treeNodes = null;
+      state.flatTree = [];
+      
+      dom.managerScreen.classList.add('hidden');
+      dom.authScreen.classList.remove('hidden');
+      dom.inputPassword.value = '';
+    });
+
+    // Reload
+    dom.btnRefresh.addEventListener('click', () => {
+      fetchRepoTree();
+    });
+
+    // Search Engine listeners
+    dom.searchInput.addEventListener('input', (e) => {
+      state.searchQuery = e.target.value;
+      if (state.searchQuery.trim().length > 0) {
+        dom.searchClear.classList.remove('hidden');
+      } else {
+        dom.searchClear.classList.add('hidden');
+      }
+      render();
+    });
+
+    dom.searchClear.addEventListener('click', () => {
+      dom.searchInput.value = '';
+      state.searchQuery = '';
+      dom.searchClear.classList.add('hidden');
+      render();
+    });
+
+    // Folder Modals
+    dom.btnNewFolder.addEventListener('click', () => {
+      dom.modalFolder.classList.remove('hidden');
+      dom.folderNameInput.value = '';
+      dom.folderNameInput.focus();
+    });
+
+    dom.btnFolderCancel.addEventListener('click', () => {
+      dom.modalFolder.classList.add('hidden');
+    });
+
+    dom.btnFolderConfirm.addEventListener('click', () => {
+      const folderName = dom.folderNameInput.value.trim();
+      if (!folderName) return;
+      if (folderName.includes('/') || folderName.includes('\\')) {
+        showError('Invalid Folder Name', 'Directory names cannot contain path delimiters ("/" or "\\").');
+        return;
+      }
+      dom.modalFolder.classList.add('hidden');
+      createFolderOnGithub(folderName);
+    });
+
+    // Error Close
+    dom.btnErrorClose.addEventListener('click', () => {
+      dom.modalError.classList.add('hidden');
+    });
+
+    // Delete Modals
+    dom.btnDeleteCancel.addEventListener('click', () => {
+      dom.modalDelete.classList.add('hidden');
+      state.activeMenuNode = null;
+    });
+
+    dom.btnDeleteConfirm.addEventListener('click', async () => {
+      dom.modalDelete.classList.add('hidden');
+      if (state.activeMenuNode) {
+        const item = state.activeMenuNode;
+        state.activeMenuNode = null;
+        await deleteFromGithub(item);
+      }
+    });
+
+    // Bottom Sheet Hooks
+    dom.sheetClose.addEventListener('click', closeContextMenu);
+    dom.bottomSheet.addEventListener('click', (e) => {
+      if (e.target === dom.bottomSheet) closeContextMenu();
+    });
+
+    dom.sheetActionDownload.addEventListener('click', () => {
+      if (state.activeMenuNode && !state.activeMenuNode.isFolder) {
+        const node = state.activeMenuNode;
+        closeContextMenu();
+        downloadFileContent(node.path, node.name);
+      }
+    });
+
+    dom.sheetActionCopy.addEventListener('click', () => {
+      if (state.activeMenuNode) {
+        navigator.clipboard.writeText(state.activeMenuNode.path);
+        closeContextMenu();
+        showToast('Path copied to clipboard!');
+      }
+    });
+
+    dom.sheetActionDelete.addEventListener('click', () => {
+      if (state.activeMenuNode) {
+        const node = state.activeMenuNode;
+        closeContextMenu();
+        promptDelete(node);
+      }
+    });
+
+    // ==============================================
+    // DRAG-AND-DROP & UPLOAD LOGIC
+    // ==============================================
+
+    // Trigger local file explorer
+    dom.fileUpload.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) handleFileUpload(file);
+      dom.fileUpload.value = ''; // Reset file input
+    });
+
+    // File Processing and size capping handler
+    async function handleFileUpload(file) {
+      const maxLimit = 45 * 1024 * 1024; // 45 Megabytes
+      if (file.size > maxLimit) {
+        showError(
+          'File Size Limit Exceeded',
+          `The selected file <span class="font-semibold text-white">${file.name}</span> is ${formatBytes(file.size)}. Cloud Mint caps uploads strictly at <span class="text-emerald-400 font-semibold">45 MB</span> to prevent browser freezing during Base64 rendering and to bypass API network timeouts.`
+        );
+        return;
+      }
+
+      // Read file and parse base64
+      showLoading(`Encrypting & packing: ${file.name}...`);
+      try {
+        const base64Content = await convertFileToBase64(file);
+        
+        // Check if file name already exists in current path
+        const currentNode = getNodeByPath(state.treeNodes, state.currentPath);
+        let existingSha = null;
+        if (currentNode && currentNode.children[file.name]) {
+          existingSha = currentNode.children[file.name].sha;
+        }
+
+        await uploadToGithub(file, base64Content, existingSha);
+      } catch (err) {
+        showError('Encryption Error', `Could not read file locally: ${err.message}`);
+        hideLoading();
+      }
+    }
+
+    function convertFileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+          const rawBase64 = reader.result.split(',')[1];
+          resolve(rawBase64);
+        };
+        reader.onerror = (err) => reject(err);
+      });
+    }
+
+    // Drag-and-drop file upload zoning listeners
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      dom.dropZone.addEventListener(eventName, preventDefault, false);
+    });
+
+    function preventDefault(e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dom.dropZone.addEventListener(eventName, () => {
+        dom.dropZone.classList.add('border-emerald-500/40', 'bg-emerald-500/[0.02]');
+      }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dom.dropZone.addEventListener(eventName, () => {
+        dom.dropZone.classList.remove('border-emerald-500/40', 'bg-emerald-500/[0.02]');
+      }, false);
+    });
+
+    dom.dropZone.addEventListener('drop', (e) => {
+      const dt = e.dataTransfer;
+      const file = dt.files[0];
+      if (file) {
+        handleFileUpload(file);
+      }
+    });
+
+  </script>
+</body>
+</html>

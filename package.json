@@ -1,0 +1,12 @@
+{
+  "name": "cloud-mint",
+  "version": "1.0.0",
+  "description": "Cloud Mint - A premium, Git-backed private file manager",
+  "main": "index.js",
+  "scripts": {
+    "dev": "netlify dev"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3"
+  }
+}
