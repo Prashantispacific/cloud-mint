@@ -348,6 +348,18 @@
       </div>
     </div>
 
+    <!-- 5. FILE RENAME MODAL -->
+    <div id="modal-rename" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden animate-fade-in">
+      <div class="glass-card rounded-2xl p-6 max-w-sm w-full shadow-2xl relative overflow-hidden animate-slide-up">
+        <h3 class="text-lg font-display font-semibold text-white mb-4">Rename File</h3>
+        <input type="text" id="rename-name-input" placeholder="New file name..." class="w-full glass-input rounded-xl px-4 py-3 text-white text-sm mb-5">
+        <div class="flex space-x-3 justify-end">
+          <button id="btn-rename-cancel" class="px-4 py-2 border border-slate-800 hover:border-slate-700 text-slate-400 rounded-lg text-sm active:scale-95 transition-all">Cancel</button>
+          <button id="btn-rename-confirm" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-medium rounded-lg text-sm active:scale-95 transition-all">Rename</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 4. MOBILE / TOUCH ACTIONS BOTTOM SHEET -->
     <div id="bottom-sheet" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-40 flex items-end justify-center hidden animate-fade-in">
       <div class="glass-card rounded-t-3xl p-6 w-full max-w-xl shadow-2xl relative border-x-0 border-b-0 animate-slide-up">
@@ -377,6 +389,13 @@
               <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/></svg>
             </span>
             <span>Copy Full Path</span>
+          </button>
+
+          <button id="sheet-action-rename" class="w-full flex items-center space-x-3 px-4 py-3.5 bg-slate-900/60 border border-slate-800/80 rounded-xl hover:border-emerald-500/30 text-left text-white text-sm font-semibold active:scale-98 transition-all">
+            <span class="text-slate-400">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" /></svg>
+            </span>
+            <span>Rename File</span>
           </button>
           
           <button id="sheet-action-delete" class="w-full flex items-center space-x-3 px-4 py-3.5 bg-red-500/10 border border-red-500/20 rounded-xl hover:bg-red-500/20 text-left text-red-400 text-sm font-semibold active:scale-98 transition-all">
@@ -414,6 +433,7 @@
       download: `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>`,
       copy: `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/></svg>`,
       delete: `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>`,
+      edit: `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" /></svg>`,
       ellipsis: `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" /></svg>`
     };
 
@@ -773,6 +793,74 @@
       }
     }
 
+    // Rename file on GitHub (fetches old, uploads to new path, deletes old)
+    async function renameFileOnGithub(item, newName) {
+      showLoading(`Renaming ${item.name} to ${newName}...`);
+      
+      const dirPath = state.currentPath;
+      const oldPath = item.path;
+      const newPath = dirPath ? `${dirPath}/${newName}` : newName;
+      
+      try {
+        // Step 1: Fetch raw content of the old file
+        const getUrl = `https://api.github.com/repos/${state.owner}/${state.repo}/contents/${oldPath}`;
+        const getResponse = await fetch(getUrl, { headers: getApiHeaders() });
+        
+        if (!getResponse.ok) {
+          throw new Error(`Failed to read source file: ${getResponse.statusText}`);
+        }
+        
+        const getData = await getResponse.json();
+        let base64Content = getData.content;
+        
+        // If content is truncated or not base64 (large files), download raw bytes as blob and encode
+        if (!base64Content || getData.encoding !== 'base64') {
+          const rawResponse = await fetch(getUrl, {
+            headers: {
+              'Authorization': `Bearer ${state.token}`,
+              'Accept': 'application/vnd.github.v3.raw'
+            }
+          });
+          if (!rawResponse.ok) {
+            throw new Error(`Failed to fetch raw file bytes: ${rawResponse.statusText}`);
+          }
+          const blob = await rawResponse.blob();
+          base64Content = await convertFileToBase64(blob);
+        }
+        
+        base64Content = base64Content.replace(/\s/g, '');
+
+        // Step 2: Upload to new path
+        const putUrl = `https://api.github.com/repos/${state.owner}/${state.repo}/contents/${newPath}`;
+        const putPayload = {
+          message: `Rename ${oldPath} to ${newPath} via Cloud Mint`,
+          content: base64Content,
+          branch: state.branch
+        };
+        
+        const putResponse = await fetch(putUrl, {
+          method: 'PUT',
+          headers: getApiHeaders(),
+          body: JSON.stringify(putPayload)
+        });
+        
+        if (!putResponse.ok) {
+          const err = await putResponse.json();
+          throw new Error(err.message || 'Error writing to new path');
+        }
+
+        // Step 3: Delete old file
+        await deleteSingleFile(oldPath, item.sha);
+        
+        // Step 4: Refresh tree
+        await fetchRepoTree();
+        showToast('File renamed successfully!');
+      } catch (err) {
+        showError('Rename Failure', `Could not rename the file: <br><br><span class="font-mono text-xs text-red-300">${err.message}</span>`);
+        hideLoading();
+      }
+    }
+
     // ==============================================
     // DOM CONTROLLERS & RENDERING ENGINE
     // ==============================================
@@ -828,8 +916,14 @@
       sheetDetails: document.getElementById('sheet-details'),
       sheetActionDownload: document.getElementById('sheet-action-download'),
       sheetActionCopy: document.getElementById('sheet-action-copy'),
+      sheetActionRename: document.getElementById('sheet-action-rename'),
       sheetActionDelete: document.getElementById('sheet-action-delete'),
-      sheetClose: document.getElementById('sheet-close')
+      sheetClose: document.getElementById('sheet-close'),
+      
+      modalRename: document.getElementById('modal-rename'),
+      renameNameInput: document.getElementById('rename-name-input'),
+      btnRenameCancel: document.getElementById('btn-rename-cancel'),
+      btnRenameConfirm: document.getElementById('btn-rename-confirm')
     };
 
     // Toggle loading states
@@ -1077,6 +1171,9 @@
                 <button title="Download" class="action-btn p-2 text-slate-400 hover:text-emerald-400 rounded-lg hover:bg-slate-900/60 active:scale-95 transition-all">
                   ${Icons.download}
                 </button>
+                <button title="Rename" class="action-btn p-2 text-slate-400 hover:text-emerald-400 rounded-lg hover:bg-slate-900/60 active:scale-95 transition-all">
+                  ${Icons.edit}
+                </button>
               ` : ''}
               <button title="Copy Path" class="action-btn p-2 text-slate-400 hover:text-emerald-400 rounded-lg hover:bg-slate-900/60 active:scale-95 transition-all">
                 ${Icons.copy}
@@ -1093,13 +1190,22 @@
         let btnIdx = 0;
         
         if (!item.isFolder) {
+          // 1. Download
           const dlBtn = btns[btnIdx++];
           dlBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             downloadFileContent(item.path, item.name);
           });
+
+          // 2. Rename
+          const renameBtn = btns[btnIdx++];
+          renameBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            promptRename(item);
+          });
         }
 
+        // 3. Copy Path
         const copyBtn = btns[btnIdx++];
         copyBtn.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -1107,6 +1213,7 @@
           showToast('Path copied to clipboard!');
         });
 
+        // 4. Delete
         const deleteBtn = btns[btnIdx++];
         deleteBtn.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -1150,9 +1257,11 @@
         const childCount = Object.keys(item.children).length;
         detailString = `${childCount} items • Path: /${item.path}`;
         dom.sheetActionDownload.classList.add('hidden'); // Folders can't be downloaded directly
+        dom.sheetActionRename.classList.add('hidden');   // Hide rename for folders
       } else {
         detailString = `${formatBytes(item.size)} • Path: /${item.path}`;
         dom.sheetActionDownload.classList.remove('hidden');
+        dom.sheetActionRename.classList.remove('hidden');
       }
       dom.sheetDetails.textContent = detailString;
 
@@ -1188,6 +1297,14 @@
         dom.deleteWarningText.innerHTML = `Are you sure you want to delete <span class="text-white font-semibold">${item.name}</span> permanently? This operation cannot be undone.`;
       }
       dom.modalDelete.classList.remove('hidden');
+    }
+
+    // Rename Prompts
+    function promptRename(item) {
+      state.activeMenuNode = item;
+      dom.renameNameInput.value = item.name;
+      dom.modalRename.classList.remove('hidden');
+      setTimeout(() => dom.renameNameInput.focus(), 50);
     }
 
     // ==============================================
@@ -1405,11 +1522,41 @@
       }
     });
 
+    dom.sheetActionRename.addEventListener('click', () => {
+      if (state.activeMenuNode) {
+        const node = state.activeMenuNode;
+        closeContextMenu();
+        promptRename(node);
+      }
+    });
+
     dom.sheetActionDelete.addEventListener('click', () => {
       if (state.activeMenuNode) {
         const node = state.activeMenuNode;
         closeContextMenu();
         promptDelete(node);
+      }
+    });
+
+    // Rename Modals click handlers
+    dom.btnRenameCancel.addEventListener('click', () => {
+      dom.modalRename.classList.add('hidden');
+      state.activeMenuNode = null;
+    });
+
+    dom.btnRenameConfirm.addEventListener('click', async () => {
+      const newName = dom.renameNameInput.value.trim();
+      if (!newName) return;
+      if (newName.includes('/') || newName.includes('\\')) {
+        showError('Invalid File Name', 'File names cannot contain path delimiters ("/" or "\\").');
+        return;
+      }
+      dom.modalRename.classList.add('hidden');
+      if (state.activeMenuNode) {
+        const item = state.activeMenuNode;
+        state.activeMenuNode = null;
+        if (item.name === newName) return;
+        await renameFileOnGithub(item, newName);
       }
     });
 
