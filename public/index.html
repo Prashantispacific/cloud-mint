@@ -56,6 +56,11 @@
 
   <!-- Custom Cinematic Styles -->
   <style>
+    html {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(52, 211, 153, 0.2) rgba(15, 23, 42, 0.2);
+    }
+
     body {
       background-color: #020617;
       color: #f1f5f9;
@@ -77,6 +82,15 @@
     }
     ::-webkit-scrollbar-thumb:hover {
       background: rgba(52, 211, 153, 0.4);
+    }
+
+    /* Hide scrollbar for breadcrumbs */
+    #breadcrumbs::-webkit-scrollbar {
+      display: none;
+    }
+    #breadcrumbs {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
     }
 
     /* Ambient background mesh glow */
@@ -103,27 +117,32 @@
       outline: none;
     }
 
+    /* Keyboard accessibility outline */
+    button:focus-visible, 
+    a:focus-visible,
+    label:focus-visible,
+    input:focus-visible {
+      outline: 2px solid rgba(52, 211, 153, 0.6);
+      outline-offset: 2px;
+    }
+
     .file-row {
-      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: background 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .file-row:hover {
       background: rgba(16, 185, 129, 0.03);
       border-color: rgba(52, 211, 153, 0.15);
     }
-
-    /* Interactive touch indicators */
-    .long-press-indicator {
-      transition: transform 0.6s linear, opacity 0.2s ease;
-      transform: scale(0);
-      opacity: 0;
+    .file-row:active {
+      background: rgba(16, 185, 129, 0.06);
     }
-    .pressing .long-press-indicator {
-      transform: scale(1);
-      opacity: 0.15;
+    .file-row.pressing {
+      background: rgba(16, 185, 129, 0.08) !important;
+      transition: background 0.6s ease;
     }
   </style>
 </head>
-<body class="h-full relative select-none">
+<body class="h-full relative">
 
   <!-- Glow Canvas -->
   <div class="absolute inset-0 ambient-glow z-0"></div>
@@ -151,37 +170,37 @@
             <p class="text-slate-400 text-sm mt-2">Private repository-backed file storage</p>
           </div>
 
-          <form id="auth-form" class="space-y-5">
+          <form id="auth-form" class="space-y-5" autocomplete="on">
             <!-- Dynamic repository config fields if not set on Netlify -->
             <div id="repo-fields" class="space-y-4 hidden">
               <div>
-                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">GitHub Repository</label>
-                <input type="text" id="input-repo" placeholder="username/private-repo" class="w-full glass-input rounded-xl px-4 py-3 text-white text-sm">
+                <label for="input-repo" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">GitHub Repository</label>
+                <input type="text" id="input-repo" name="vault-repo" autocomplete="username" spellcheck="false" placeholder="username/private-repo" class="w-full glass-input rounded-xl px-4 py-3 text-white text-sm">
               </div>
               <div>
-                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Branch</label>
-                <input type="text" id="input-branch" value="main" placeholder="main" class="w-full glass-input rounded-xl px-4 py-3 text-white text-sm">
+                <label for="input-branch" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Branch</label>
+                <input type="text" id="input-branch" name="vault-branch" value="main" autocomplete="off" spellcheck="false" placeholder="main" class="w-full glass-input rounded-xl px-4 py-3 text-white text-sm">
               </div>
             </div>
 
             <div>
-              <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Access Key</label>
+              <label for="input-password" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Access Key</label>
               <div class="relative">
-                <input type="password" id="input-password" placeholder="••••••••••••" class="w-full glass-input rounded-xl pl-4 pr-10 py-3 text-white text-sm" required>
-                <button type="button" id="toggle-password" class="absolute right-3 top-3.5 text-slate-500 hover:text-slate-300">
-                  <svg id="eye-icon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                <input type="password" id="input-password" name="vault-password" autocomplete="current-password" spellcheck="false" placeholder="••••••••••••" class="w-full glass-input rounded-xl pl-4 pr-10 py-3 text-white text-sm" required>
+                <button type="button" id="toggle-password" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300" aria-label="Toggle password visibility">
+                  <svg id="eye-icon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                 </button>
               </div>
             </div>
 
-            <div id="auth-error" class="text-red-400 text-xs hidden flex items-center space-x-2">
-              <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            <div id="auth-error" class="text-red-400 text-xs hidden flex items-center space-x-2" aria-live="polite">
+              <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
               <span id="auth-error-msg">Incorrect credentials.</span>
             </div>
 
             <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-slate-950 font-semibold py-3 px-4 rounded-xl transition-all duration-150 flex items-center justify-center space-x-2 shadow-lg shadow-emerald-500/20">
               <span>Decrypt Vault</span>
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7M21 12H3"/></svg>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7M21 12H3"/></svg>
             </button>
           </form>
         </div>
@@ -191,27 +210,27 @@
       <div id="manager-screen" class="w-full max-w-6xl animate-slide-up hidden flex flex-col space-y-6">
         
         <!-- Header -->
-        <div class="flex flex-row justify-between items-center pb-4 border-b border-slate-800/40 gap-2">
-          <div class="min-w-0">
+        <div class="flex flex-row justify-between items-center pb-4 border-b border-slate-800/40 gap-3">
+          <div class="min-w-0 flex-1">
             <div class="flex items-center space-x-2 sm:space-x-3 min-w-0">
               <span class="p-1.5 sm:p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20 flex-shrink-0">
-                <svg class="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg class="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-.1-7.843-.218" />
                 </svg>
               </span>
-              <div class="min-w-0">
-                <h1 class="text-lg sm:text-2xl font-display font-bold text-white leading-none truncate">Cloud Mint</h1>
-                <p id="repo-badge" class="text-[10px] sm:text-xs text-emerald-400/80 font-medium tracking-wide mt-1 font-mono uppercase bg-emerald-500/5 px-2 py-0.5 rounded border border-emerald-500/10 inline-block truncate max-w-[120px] xs:max-w-[180px] sm:max-w-none align-middle" title=""></p>
+              <div class="min-w-0 flex-1">
+                <h1 class="text-base sm:text-2xl font-display font-bold text-white leading-tight truncate">Cloud Mint</h1>
+                <p id="repo-badge" class="text-[9px] sm:text-xs text-emerald-400/80 font-medium tracking-wide mt-1 font-mono uppercase bg-emerald-500/5 px-2 py-0.5 rounded border border-emerald-500/10 inline-block truncate max-w-full align-middle" title=""></p>
               </div>
             </div>
           </div>
           
           <div class="flex items-center space-x-1.5 sm:space-x-3 flex-shrink-0">
-            <button id="btn-refresh" title="Force Reload Tree" class="p-2 sm:p-3 bg-slate-900/50 border border-slate-800 rounded-xl hover:border-emerald-500/30 text-slate-400 hover:text-emerald-400 active:scale-95 transition-all">
-              <svg class="w-4.5 h-4.5 sm:w-5 sm:h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+            <button id="btn-refresh" title="Force Reload Tree" aria-label="Force Reload Tree" class="p-2 sm:p-3 bg-slate-900/50 border border-slate-800 rounded-xl hover:border-emerald-500/30 text-slate-400 hover:text-emerald-400 active:scale-95 transition-all">
+              <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
             </button>
-            <button id="btn-logout" class="flex items-center space-x-1.5 sm:space-x-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-slate-900/50 border border-slate-800 rounded-xl hover:border-red-500/20 text-slate-400 hover:text-red-400 active:scale-95 transition-all text-xs sm:text-sm font-medium">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>
+            <button id="btn-logout" aria-label="Logout" class="flex items-center space-x-1.5 sm:space-x-2 px-2.5 sm:px-4 py-2 sm:py-2.5 bg-slate-900/50 border border-slate-800 rounded-xl hover:border-red-500/20 text-slate-400 hover:text-red-400 active:scale-95 transition-all text-xs sm:text-sm font-medium">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>
               <span class="hidden sm:inline">Logout</span>
             </button>
           </div>
@@ -222,70 +241,78 @@
           <!-- Search -->
           <div class="md:col-span-6 relative">
             <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             </span>
-            <input type="text" id="search-input" placeholder="Search this vault..." class="w-full glass-input rounded-xl pl-10 pr-10 py-2.5 sm:py-3 text-white text-sm placeholder-slate-500">
-            <button id="search-clear" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 hidden">
-              <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            <input type="text" id="search-input" name="vault-search" autocomplete="off" spellcheck="false" placeholder="Search this vault…" aria-label="Search files" class="w-full glass-input rounded-xl pl-10 pr-10 py-2.5 sm:py-3 text-white text-sm placeholder-slate-500">
+            <button id="search-clear" aria-label="Clear search query" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 hidden">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
           </div>
 
           <!-- Quick Buttons -->
           <div class="md:col-span-6 flex space-x-2 sm:space-x-3 justify-end">
             <button id="btn-new-folder" class="flex-grow md:flex-grow-0 flex items-center justify-center space-x-1.5 sm:space-x-2 px-4 sm:px-5 py-2.5 sm:py-3 glass-card rounded-xl hover:border-emerald-500/30 text-emerald-400 active:scale-95 transition-all text-sm font-medium">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
               <span>New Folder</span>
             </button>
             
             <label id="upload-label" class="flex-grow md:flex-grow-0 cursor-pointer flex items-center justify-center space-x-1.5 sm:space-x-2 px-5 sm:px-6 py-2.5 sm:py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold rounded-xl active:scale-95 transition-all text-sm shadow-lg shadow-emerald-500/10">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
               <span>Upload File</span>
-              <input type="file" id="file-upload" class="hidden">
+              <input type="file" id="file-upload" class="hidden" aria-label="Upload File">
             </label>
           </div>
         </div>
 
-        <!-- Breadcrumbs -->
-        <div id="breadcrumbs" class="flex items-center space-x-2 text-sm text-slate-400 font-medium overflow-x-auto pb-1">
-          <!-- Rendered dynamically -->
-        </div>
-
-        <!-- File List Box -->
-        <div id="drop-zone" class="glass-card rounded-3xl overflow-hidden shadow-2xl relative">
-          <!-- Loading skeleton overlay -->
-          <div id="list-loading" class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm z-20 flex items-center justify-center hidden">
-            <div class="flex flex-col items-center space-y-3">
-              <svg class="animate-spin h-8 w-8 text-emerald-400" viewBox="0 0 24 24" fill="none">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <span id="loading-text" class="text-sm font-medium text-emerald-400 tracking-wide">Syncing vault contents...</span>
-            </div>
+        <!-- Breadcrumbs & File List Group -->
+        <div class="flex flex-col space-y-2 sm:space-y-3">
+          <!-- Breadcrumbs -->
+          <div id="breadcrumbs" aria-label="File path breadcrumbs" class="flex items-center space-x-2 text-xs sm:text-sm text-slate-400 font-medium overflow-x-auto pb-1.5 scrollbar-thin">
+            <!-- Rendered dynamically -->
           </div>
 
-          <!-- Empty State (Empty repo or empty folder) -->
-          <div id="empty-state" class="p-16 text-center hidden flex flex-col items-center justify-center">
-            <div class="p-4 bg-slate-900/40 border border-slate-800 rounded-2xl mb-4 text-slate-500">
-              <svg class="w-10 h-10" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 012.008 1.24l.885 1.77a2.25 2.25 0 002.007 1.24h1.98a2.25 2.25 0 002.007-1.24l.885-1.77a2.25 2.25 0 012.007-1.24h3.86m-18 0h18M2.25 13.5l1.626-5.692A1.5 1.5 0 015.37 6.75h13.26a1.5 1.5 0 011.494 1.258L21.75 13.5m-19.5 0v5.25a2.25 2.25 0 002.25 2.25h13.5a2.25 2.25 0 002.25-2.25V13.5" /></svg>
+          <!-- File List Box -->
+          <div id="drop-zone" class="glass-card rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl relative">
+            <!-- Loading skeleton overlay -->
+            <div id="list-loading" class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm z-20 flex items-center justify-center hidden" aria-live="polite">
+              <div class="flex flex-col items-center space-y-3">
+                <svg class="animate-spin h-8 w-8 text-emerald-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span id="loading-text" class="text-sm font-medium text-emerald-400 tracking-wide">Syncing vault contents…</span>
+              </div>
             </div>
-            <h3 class="text-lg font-semibold text-white">This folder is empty</h3>
-            <p class="text-slate-400 text-sm mt-1 max-w-xs">Drag & drop files here, or use the toolbar to add contents.</p>
-          </div>
 
-          <!-- Table/List Structure -->
-          <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
-              <thead>
-                <tr class="border-b border-slate-800/60 bg-slate-900/20 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                  <th class="py-3 sm:py-4 px-3 sm:px-6 w-3/5">Name</th>
-                  <th class="py-3 sm:py-4 px-3 sm:px-6 w-1/5">Size</th>
-                  <th class="py-3 sm:py-4 px-3 sm:px-6 w-1/5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="file-list-body" class="divide-y divide-slate-900/30">
-                <!-- Rendered dynamically -->
-              </tbody>
-            </table>
+            <!-- Empty State (Empty repo or empty folder) -->
+            <div id="empty-state" class="p-16 text-center hidden flex flex-col items-center justify-center">
+              <div class="p-4 bg-slate-900/40 border border-slate-800 rounded-2xl mb-4 text-slate-500">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 012.008 1.24l.885 1.77a2.25 2.25 0 002.007 1.24h1.98a2.25 2.25 0 002.007-1.24l.885-1.77a2.25 2.25 0 012.007-1.24h3.86m-18 0h18M2.25 13.5l1.626-5.692A1.5 1.5 0 015.37 6.75h13.26a1.5 1.5 0 011.494 1.258L21.75 13.5m-19.5 0v5.25a2.25 2.25 0 002.25 2.25h13.5a2.25 2.25 0 002.25-2.25V13.5" /></svg>
+              </div>
+              <h3 class="text-lg font-semibold text-white">This folder is empty</h3>
+              <p class="text-slate-400 text-sm mt-1 max-w-xs text-pretty">Drag & drop files here, or use the toolbar to add contents.</p>
+            </div>
+
+            <!-- Desktop Table View (Hidden on mobile) -->
+            <div id="desktop-table-container" class="hidden md:block overflow-x-auto">
+              <table class="w-full text-left border-collapse table-fixed">
+                <thead>
+                  <tr class="border-b border-slate-800/60 bg-slate-900/20 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    <th class="py-2.5 sm:py-3.5 px-6 w-7/12 md:w-3/5 text-slate-400">Name</th>
+                    <th class="py-2.5 sm:py-3.5 px-6 w-3/12 md:w-1/5 text-slate-400 tabular-nums">Size</th>
+                    <th class="py-2.5 sm:py-3.5 px-6 w-2/12 md:w-1/5 text-right text-slate-400">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="file-list-body-desktop" class="divide-y divide-slate-900/30">
+                  <!-- Rendered dynamically -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Mobile List View (Hidden on desktop) -->
+            <div id="file-list-mobile" class="md:hidden divide-y divide-slate-900/30">
+              <!-- Rendered dynamically -->
+            </div>
           </div>
         </div>
 
@@ -307,10 +334,10 @@
          ============================================== -->
 
     <!-- 1. FOLDER CREATION MODAL -->
-    <div id="modal-folder" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden animate-fade-in">
-      <div class="glass-card rounded-2xl p-6 max-w-sm w-full shadow-2xl relative overflow-hidden animate-slide-up">
+    <div id="modal-folder" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden animate-fade-in" aria-modal="true" role="dialog">
+      <div class="glass-card rounded-2xl p-5 sm:p-6 max-w-sm w-full shadow-2xl relative overflow-hidden animate-slide-up">
         <h3 class="text-lg font-display font-semibold text-white mb-4">Create New Folder</h3>
-        <input type="text" id="folder-name-input" placeholder="Folder name..." class="w-full glass-input rounded-xl px-4 py-3 text-white text-sm mb-5">
+        <input type="text" id="folder-name-input" name="folder-name" autocomplete="off" spellcheck="false" placeholder="Folder name…" aria-label="Folder name" class="w-full glass-input rounded-xl px-4 py-3 text-white text-sm mb-5">
         <div class="flex space-x-3 justify-end">
           <button id="btn-folder-cancel" class="px-4 py-2 border border-slate-800 hover:border-slate-700 text-slate-400 rounded-lg text-sm active:scale-95 transition-all">Cancel</button>
           <button id="btn-folder-confirm" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-medium rounded-lg text-sm active:scale-95 transition-all">Create</button>
@@ -319,16 +346,16 @@
     </div>
 
     <!-- 2. ERROR OVERLAY (Strict file size limit warning) -->
-    <div id="modal-error" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden animate-fade-in">
-      <div class="glass-card border-red-500/20 rounded-2xl p-7 max-w-md w-full shadow-2xl relative overflow-hidden animate-slide-up">
+    <div id="modal-error" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden animate-fade-in" aria-modal="true" role="alertdialog">
+      <div class="glass-card border-red-500/20 rounded-2xl p-5 sm:p-7 max-w-md w-full shadow-2xl relative overflow-hidden animate-slide-up">
         <div class="absolute top-0 left-0 w-full h-[2px] bg-red-500/40"></div>
         <div class="flex items-center space-x-3 mb-4">
           <span class="p-2 bg-red-500/10 rounded-xl border border-red-500/20 text-red-400">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
           </span>
           <h3 class="text-lg font-display font-semibold text-white" id="error-title">Upload Aborted</h3>
         </div>
-        <p class="text-slate-300 text-sm leading-relaxed mb-6" id="error-message">This file exceeds the 100 MB GitHub API ceiling. Cloud Mint uses GitHub's Git Data API for reliable transfers up to 100 MB.</p>
+        <p class="text-slate-300 text-sm leading-relaxed mb-6 text-pretty" id="error-message">This file exceeds the 100&nbsp;MB GitHub API ceiling. Cloud Mint uses GitHub’s Git Data API for reliable transfers up to 100&nbsp;MB.</p>
         <div class="flex justify-end">
           <button id="btn-error-close" class="px-5 py-2.5 bg-slate-900 border border-slate-800 hover:border-slate-700 text-white rounded-xl text-sm font-semibold active:scale-95 transition-all">Understood</button>
         </div>
@@ -336,11 +363,11 @@
     </div>
 
     <!-- 3. CUSTOM CONFIRM DELETE MODAL -->
-    <div id="modal-delete" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden animate-fade-in">
-      <div class="glass-card border-red-500/20 rounded-2xl p-6 max-w-sm w-full shadow-2xl relative overflow-hidden animate-slide-up">
+    <div id="modal-delete" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden animate-fade-in" aria-modal="true" role="dialog">
+      <div class="glass-card border-red-500/20 rounded-2xl p-5 sm:p-6 max-w-sm w-full shadow-2xl relative overflow-hidden animate-slide-up">
         <div class="absolute top-0 left-0 w-full h-[2px] bg-red-500/40"></div>
         <h3 class="text-lg font-display font-semibold text-white mb-2">Delete Permanently?</h3>
-        <p id="delete-warning-text" class="text-slate-400 text-sm leading-relaxed mb-5"></p>
+        <p id="delete-warning-text" class="text-slate-400 text-sm leading-relaxed mb-5 text-pretty"></p>
         <div class="flex space-x-3 justify-end">
           <button id="btn-delete-cancel" class="px-4 py-2 border border-slate-800 hover:border-slate-700 text-slate-400 rounded-lg text-sm active:scale-95 transition-all">Keep file</button>
           <button id="btn-delete-confirm" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg text-sm active:scale-95 transition-all">Yes, Delete</button>
@@ -349,7 +376,7 @@
     </div>
 
     <!-- 4. MOBILE / TOUCH ACTIONS BOTTOM SHEET -->
-    <div id="bottom-sheet" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-40 flex items-end justify-center hidden animate-fade-in">
+    <div id="bottom-sheet" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-40 flex items-end justify-center hidden animate-fade-in" aria-modal="true" role="dialog">
       <div class="glass-card rounded-t-3xl p-6 w-full max-w-xl shadow-2xl relative border-x-0 border-b-0 animate-slide-up">
         <!-- Top notch drag bar aesthetic -->
         <div class="w-12 h-1 bg-slate-800 rounded-full mx-auto mb-6"></div>
@@ -360,33 +387,33 @@
           </span>
           <div class="overflow-hidden">
             <h4 id="sheet-name" class="text-base font-semibold text-white truncate">Filename.txt</h4>
-            <p id="sheet-details" class="text-xs text-slate-400 mt-0.5">File size: -- • Path: /</p>
+            <p id="sheet-details" class="text-xs text-slate-400 mt-0.5 tabular-nums">File size: -- • Path: /</p>
           </div>
         </div>
 
         <div class="space-y-3">
           <button id="sheet-action-download" class="w-full flex items-center space-x-3 px-4 py-3.5 bg-slate-900/60 border border-slate-800/80 rounded-xl hover:border-emerald-500/30 text-left text-white text-sm font-semibold active:scale-98 transition-all">
             <span class="text-emerald-400">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
             </span>
             <span>Download</span>
           </button>
           
           <button id="sheet-action-copy" class="w-full flex items-center space-x-3 px-4 py-3.5 bg-slate-900/60 border border-slate-800/80 rounded-xl hover:border-emerald-500/30 text-left text-white text-sm font-semibold active:scale-98 transition-all">
             <span class="text-slate-400">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/></svg>
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/></svg>
             </span>
             <span>Copy Full Path</span>
           </button>
           
           <button id="sheet-action-delete" class="w-full flex items-center space-x-3 px-4 py-3.5 bg-red-500/10 border border-red-500/20 rounded-xl hover:bg-red-500/20 text-left text-red-400 text-sm font-semibold active:scale-98 transition-all">
             <span>
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>
             </span>
             <span>Delete Permanently</span>
           </button>
           
-          <button id="sheet-close" class="w-full text-center py-3.5 text-slate-400 text-sm font-medium hover:text-white mt-2">
+          <button id="sheet-close" aria-label="Close menu" class="w-full text-center py-3.5 text-slate-400 text-sm font-medium hover:text-white mt-2">
             Cancel
           </button>
         </div>
@@ -402,19 +429,19 @@
     
     // SVG icons definitions dictionary (reusable design library)
     const Icons = {
-      folder: `<svg class="w-6 h-6 text-emerald-400/80" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-19.5 0A2.25 2.25 0 004.5 15h15a2.25 2.25 0 002.25-2.25m-19.5 0v.25A2.25 2.25 0 004.5 17.25h15a2.25 2.25 0 002.25-2.25v-.25M9 3h1.378a2.25 2.25 0 011.603.682l1.63 1.83A2.25 2.25 0 0015.223 6.25H21A2.25 2.25 0 0123.25 8.5v3.25" /></svg>`,
-      file: `<svg class="w-6 h-6 text-slate-400/80" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>`,
-      image: `<svg class="w-6 h-6 text-sky-400/80" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375 0 11-.75 0 .375 0 01.75 0z" /></svg>`,
-      pdf: `<svg class="w-6 h-6 text-red-400/80" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /><text x="6" y="19" font-family="system-ui" font-size="6" font-weight="bold" fill="currentColor">PDF</text></svg>`,
-      code: `<svg class="w-6 h-6 text-purple-400/80" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" /></svg>`,
-      archive: `<svg class="w-6 h-6 text-amber-500/80" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>`,
-      audio: `<svg class="w-6 h-6 text-pink-400/80" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 0v11.25m0-11.25a2.25 2.25 0 00-2.25-2.25h-.375a2.25 2.25 0 00-2.25 2.25v11.25m3.75-1.5a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM9 19.5a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0z" /></svg>`,
-      video: `<svg class="w-6 h-6 text-fuchsia-400/80" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12l-4.5-3v6l4.5-3z" /></svg>`,
+      folder: `<svg class="w-6 h-6 text-emerald-400/80" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-19.5 0A2.25 2.25 0 004.5 15h15a2.25 2.25 0 002.25-2.25m-19.5 0v.25A2.25 2.25 0 004.5 17.25h15a2.25 2.25 0 002.25-2.25v-.25M9 3h1.378a2.25 2.25 0 011.603.682l1.63 1.83A2.25 2.25 0 0015.223 6.25H21A2.25 2.25 0 0123.25 8.5v3.25" /></svg>`,
+      file: `<svg class="w-6 h-6 text-slate-400/80" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>`,
+      image: `<svg class="w-6 h-6 text-sky-400/80" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375 0 11-.75 0 .375 0 01.75 0z" /></svg>`,
+      pdf: `<svg class="w-6 h-6 text-red-400/80" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /><text x="6" y="19" font-family="system-ui" font-size="6" font-weight="bold" fill="currentColor">PDF</text></svg>`,
+      code: `<svg class="w-6 h-6 text-purple-400/80" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" /></svg>`,
+      archive: `<svg class="w-6 h-6 text-amber-500/80" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>`,
+      audio: `<svg class="w-6 h-6 text-pink-400/80" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 0v11.25m0-11.25a2.25 2.25 0 00-2.25-2.25h-.375a2.25 2.25 0 00-2.25 2.25v11.25m3.75-1.5a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM9 19.5a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0z" /></svg>`,
+      video: `<svg class="w-6 h-6 text-fuchsia-400/80" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12l-4.5-3v6l4.5-3z" /></svg>`,
       
-      download: `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>`,
-      copy: `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/></svg>`,
-      delete: `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>`,
-      ellipsis: `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" /></svg>`
+      download: `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>`,
+      copy: `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/></svg>`,
+      delete: `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>`,
+      ellipsis: `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" /></svg>`
     };
 
     // Helper to determine icon type by file extension
@@ -445,7 +472,7 @@
       const dm = decimals < 0 ? 0 : decimals;
       const sizes = ['B', 'KB', 'MB', 'GB'];
       const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + '\u00A0' + sizes[i];
     }
 
     // App core state
@@ -572,7 +599,7 @@
 
     // Fetch repository flat file tree recursively
     async function fetchRepoTree() {
-      showLoading('Syncing vault structure...');
+      showLoading('Syncing vault structure…');
       try {
         const url = `https://api.github.com/repos/${state.owner}/${state.repo}/git/trees/${state.branch}?recursive=true`;
         const response = await fetch(url, { headers: getApiHeaders() });
@@ -637,7 +664,7 @@
 
     // Path A: GitHub Contents API (PUT /repos/.../contents/...)
     async function uploadViaContentsApi(file, targetPath, base64Content, existingSha) {
-      showLoading(`Streaming ${file.name} to storage...`);
+      showLoading(`Streaming ${file.name} to storage…`);
       const url = `https://api.github.com/repos/${state.owner}/${state.repo}/contents/${targetPath}`;
 
       const payload = {
@@ -670,7 +697,7 @@
       const hdrs = getApiHeaders();
 
       // Step 1/4: Create the blob
-      showLoading(`Step 1/4 — Creating binary blob for ${file.name}...`);
+      showLoading(`Step 1/4 — Creating binary blob for ${file.name}…`);
       const blobRes = await fetch(`${apiBase}/git/blobs`, {
         method: 'POST',
         headers: hdrs,
@@ -687,7 +714,7 @@
       const blobSha = blobData.sha;
 
       // Step 2/4: Get the latest commit SHA on the target branch
-      showLoading(`Step 2/4 — Reading branch head...`);
+      showLoading(`Step 2/4 — Reading branch head…`);
       const refRes = await fetch(`${apiBase}/git/ref/heads/${state.branch}`, { headers: hdrs });
       if (!refRes.ok) {
         const e = await refRes.json();
@@ -706,7 +733,7 @@
       const baseTreeSha = commitData.tree.sha;
 
       // Step 3/4: Create a new tree with the blob inserted at the target path
-      showLoading(`Step 3/4 — Building commit tree...`);
+      showLoading(`Step 3/4 — Building commit tree…`);
       const treeRes = await fetch(`${apiBase}/git/trees`, {
         method: 'POST',
         headers: hdrs,
@@ -727,7 +754,7 @@
       const treeData = await treeRes.json();
 
       // Step 4/4: Create a commit and fast-forward the branch ref
-      showLoading(`Step 4/4 — Committing ${file.name}...`);
+      showLoading(`Step 4/4 — Committing ${file.name}…`);
       const newCommitRes = await fetch(`${apiBase}/git/commits`, {
         method: 'POST',
         headers: hdrs,
@@ -757,14 +784,14 @@
         throw new Error(e.message || 'Branch ref update failed');
       }
 
-      showLoading(`Upload complete — syncing vault...`);
+      showLoading(`Upload complete — syncing vault…`);
     }
 
     // Delete single file/folder
     async function deleteFromGithub(item) {
       if (item.type === 'folder') {
         // Deleting a folder in git requires deleting all files inside it
-        showLoading(`Cleaning directory: ${item.name}...`);
+        showLoading(`Cleaning directory: ${item.name}…`);
         
         // Find all descendants
         const prefix = item.path + '/';
@@ -794,7 +821,7 @@
         
         await fetchRepoTree();
       } else {
-        showLoading(`Removing ${item.name}...`);
+        showLoading(`Removing ${item.name}…`);
         try {
           await deleteSingleFile(item.path, item.sha);
           await fetchRepoTree();
@@ -827,7 +854,7 @@
 
     // Create empty folder via .gitkeep
     async function createFolderOnGithub(folderName) {
-      showLoading(`Provisioning directory: ${folderName}...`);
+      showLoading(`Provisioning directory: ${folderName}…`);
       const fullPath = state.currentPath ? `${state.currentPath}/${folderName}/.gitkeep` : `${folderName}/.gitkeep`;
       const url = `https://api.github.com/repos/${state.owner}/${state.repo}/contents/${fullPath}`;
       
@@ -858,7 +885,7 @@
 
     // Download file locally using authenticated fetch (avoiding 404 on private repositories)
     async function downloadFileContent(path, filename) {
-      showLoading(`Preparing secure download...`);
+      showLoading(`Preparing secure download…`);
       try {
         const url = `https://api.github.com/repos/${state.owner}/${state.repo}/contents/${path}`;
         const response = await fetch(url, {
@@ -921,7 +948,9 @@
       listLoading: document.getElementById('list-loading'),
       loadingText: document.getElementById('loading-text'),
       emptyState: document.getElementById('empty-state'),
-      fileListBody: document.getElementById('file-list-body'),
+      desktopContainer: document.getElementById('desktop-table-container'),
+      fileListBodyDesktop: document.getElementById('file-list-body-desktop'),
+      fileListMobile: document.getElementById('file-list-mobile'),
       vaultStats: document.getElementById('vault-stats'),
       
       modalFolder: document.getElementById('modal-folder'),
@@ -948,10 +977,22 @@
       sheetActionDelete: document.getElementById('sheet-action-delete'),
       sheetClose: document.getElementById('sheet-close')
     };
+      btnDeleteCancel: document.getElementById('btn-delete-cancel'),
+      btnDeleteConfirm: document.getElementById('btn-delete-confirm'),
+      
+      bottomSheet: document.getElementById('bottom-sheet'),
+      sheetIcon: document.getElementById('sheet-icon'),
+      sheetName: document.getElementById('sheet-name'),
+      sheetDetails: document.getElementById('sheet-details'),
+      sheetActionDownload: document.getElementById('sheet-action-download'),
+      sheetActionCopy: document.getElementById('sheet-action-copy'),
+      sheetActionDelete: document.getElementById('sheet-action-delete'),
+      sheetClose: document.getElementById('sheet-close')
+    };
 
     // Toggle loading states
     function showLoading(text) {
-      dom.loadingText.textContent = text || 'Syncing...';
+      dom.loadingText.textContent = text || 'Syncing…';
       dom.listLoading.classList.remove('hidden');
     }
 
@@ -974,7 +1015,7 @@
       const rootLink = document.createElement('button');
       rootLink.className = 'flex items-center space-x-1 hover:text-emerald-400 focus:outline-none transition-colors';
       rootLink.innerHTML = `
-        <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
         </svg>
         <span class="font-display font-medium">Vault</span>
@@ -996,7 +1037,7 @@
         // Chevron divider
         const chevron = document.createElement('span');
         chevron.className = 'text-slate-600 select-none';
-        chevron.innerHTML = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>`;
+        chevron.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>`;
         dom.breadcrumbs.appendChild(chevron);
 
         const link = document.createElement('button');
@@ -1011,6 +1052,112 @@
         });
         dom.breadcrumbs.appendChild(link);
       });
+    }
+
+    // Master item events setup helper
+    function setupItemEvents(element, item) {
+      let pressTimer = null;
+      let isPressing = false;
+
+      const startLongPress = (e) => {
+        if (e.type === 'mousedown' && e.button !== 0) return;
+        if (e.target.closest('.action-btn') || e.target.closest('.ellipsis-btn')) return;
+        
+        isPressing = true;
+        element.classList.add('pressing');
+        
+        pressTimer = setTimeout(() => {
+          if (isPressing) {
+            openContextMenu(item);
+            cancelLongPress();
+          }
+        }, 600); // 600ms hold time
+      };
+
+      const cancelLongPress = () => {
+        isPressing = false;
+        element.classList.remove('pressing');
+        if (pressTimer) clearTimeout(pressTimer);
+      };
+
+      element.addEventListener('mousedown', startLongPress);
+      element.addEventListener('touchstart', startLongPress, { passive: true });
+      
+      element.addEventListener('mouseup', cancelLongPress);
+      element.addEventListener('mouseleave', cancelLongPress);
+      element.addEventListener('touchend', cancelLongPress);
+      element.addEventListener('touchmove', cancelLongPress, { passive: true });
+
+      // Double-click/double-tap triggers
+      element.addEventListener('dblclick', () => {
+        if (item.isFolder) {
+          state.currentPath = item.path;
+          render();
+        } else {
+          downloadFileContent(item.path, item.name);
+        }
+      });
+
+      // Single tap simulation
+      let lastTap = 0;
+      element.addEventListener('click', (e) => {
+        if (e.target.closest('.action-btn') || e.target.closest('.ellipsis-btn')) return;
+
+        const now = Date.now();
+        if (now - lastTap < 300) {
+          // Double click simulation
+          if (item.isFolder) {
+            state.currentPath = item.path;
+            render();
+          } else {
+            downloadFileContent(item.path, item.name);
+          }
+        } else {
+          if (window.innerWidth < 768) {
+            // Context menu on single tap for mobile view
+            setTimeout(() => {
+              if (Date.now() - lastTap >= 300) {
+                openContextMenu(item);
+              }
+            }, 300);
+          }
+        }
+        lastTap = now;
+      });
+
+      // Child element selectors action delegates
+      const dlBtn = element.querySelector('.action-download');
+      if (dlBtn) {
+        dlBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          downloadFileContent(item.path, item.name);
+        });
+      }
+
+      const copyBtn = element.querySelector('.action-copy');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          navigator.clipboard.writeText(item.path);
+          showToast('Path copied to clipboard!');
+        });
+      }
+
+      const deleteBtn = element.querySelector('.action-delete');
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          promptDelete(item);
+        });
+      }
+
+      const ellipsisBtn = element.querySelector('.ellipsis-btn');
+      if (ellipsisBtn) {
+        ellipsisBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openContextMenu(item);
+        });
+      }
     }
 
     // Master list renderer
@@ -1030,7 +1177,6 @@
       const searchActive = state.searchQuery.trim().length > 0;
       if (searchActive) {
         const query = state.searchQuery.toLowerCase();
-        // Flatten directory search results
         items = [];
         
         const traverseAndSearch = (node) => {
@@ -1054,12 +1200,14 @@
         return a.name.localeCompare(b.name);
       });
 
-      // Clear list table body
-      dom.fileListBody.innerHTML = '';
+      // Clear list contents
+      dom.fileListBodyDesktop.innerHTML = '';
+      dom.fileListMobile.innerHTML = '';
 
       if (items.length === 0) {
         dom.emptyState.classList.remove('hidden');
-        dom.fileListBody.parentElement.classList.add('hidden');
+        dom.desktopContainer.classList.add('hidden');
+        dom.fileListMobile.classList.add('hidden');
         
         // Vault stats
         dom.vaultStats.textContent = searchActive ? 'No search matches found' : 'Vault: 0 items';
@@ -1067,7 +1215,8 @@
       }
 
       dom.emptyState.classList.add('hidden');
-      dom.fileListBody.parentElement.classList.remove('hidden');
+      dom.desktopContainer.classList.remove('hidden');
+      dom.fileListMobile.classList.remove('hidden');
 
       let filesCount = 0;
       let totalBytes = 0;
@@ -1078,170 +1227,77 @@
           totalBytes += item.size;
         }
 
-        const row = document.createElement('tr');
-        row.className = 'group border-b border-slate-900/20 hover:bg-slate-900/10 cursor-pointer select-none relative file-row';
-        
-        // Construct visual cells
         const iconHtml = getFileIcon(item.name, item.type);
         const nameDisplay = searchActive ? item.path : item.name;
-
-        // Custom touch long press triggers
-        let pressTimer = null;
-        let isPressing = false;
-
-        const startLongPress = (e) => {
-          // If desktop right click, bypass
-          if (e.type === 'mousedown' && e.button !== 0) return;
-          
-          isPressing = true;
-          row.classList.add('pressing');
-          
-          pressTimer = setTimeout(() => {
-            if (isPressing) {
-              openContextMenu(item);
-              cancelLongPress();
-            }
-          }, 600); // 600ms hold time
-        };
-
-        const cancelLongPress = () => {
-          isPressing = false;
-          row.classList.remove('pressing');
-          if (pressTimer) clearTimeout(pressTimer);
-        };
-
-        // Attach long press listeners
-        row.addEventListener('mousedown', startLongPress);
-        row.addEventListener('touchstart', startLongPress, { passive: true });
-        
-        row.addEventListener('mouseup', cancelLongPress);
-        row.addEventListener('mouseleave', cancelLongPress);
-        row.addEventListener('touchend', cancelLongPress);
-        row.addEventListener('touchmove', cancelLongPress, { passive: true });
-
-        // Double click/tap triggers
-        row.addEventListener('dblclick', () => {
-          if (item.isFolder) {
-            state.currentPath = item.path;
-            render();
-          } else {
-            downloadFileContent(item.path, item.name);
-          }
-        });
-
-        // Touch event to simulate double click or open menu
-        let lastTap = 0;
-        row.addEventListener('click', (e) => {
-          // Check if click is on action buttons inside the row
-          if (e.target.closest('.action-btn') || e.target.closest('.ellipsis-btn')) return;
-
-          const now = Date.now();
-          if (now - lastTap < 300) {
-            // Double click simulation
-            if (item.isFolder) {
-              state.currentPath = item.path;
-              render();
-            } else {
-              downloadFileContent(item.path, item.name);
-            }
-          } else {
-            // Single tap on mobile does not expand by default, it prompts actions context menu
-            if (window.innerWidth < 768) {
-              // Wait a little before showing context menu to ensure no double-click is intended
-              setTimeout(() => {
-                if (Date.now() - lastTap >= 300) {
-                  openContextMenu(item);
-                }
-              }, 300);
-            }
-          }
-          lastTap = now;
-        });
 
         // Size display string
         let sizeDisplay = '--';
         if (!item.isFolder) {
           sizeDisplay = formatBytes(item.size);
         } else {
-          // Count items inside folders
           const childKeys = Object.keys(item.children);
           sizeDisplay = childKeys.length === 1 ? '1 item' : `${childKeys.length} items`;
         }
 
-        row.innerHTML = `
+        // ==========================================
+        // 1. DESKTOP ROW RENDER (<tr> element)
+        // ==========================================
+        const desktopRow = document.createElement('tr');
+        desktopRow.className = 'group border-b border-slate-900/20 hover:bg-slate-900/10 cursor-pointer select-none relative file-row';
+        desktopRow.innerHTML = `
           <!-- Name Cell -->
-          <td class="py-3 sm:py-4 px-3 sm:px-6 max-w-0">
-            <div class="flex items-center space-x-2.5 sm:space-x-4 min-w-0">
+          <td class="py-3 sm:py-4 px-6 max-w-0">
+            <div class="flex items-center space-x-3.5 min-w-0">
               <span class="flex-shrink-0">${iconHtml}</span>
               <span class="text-white font-medium text-sm truncate font-sans">${nameDisplay}</span>
             </div>
           </td>
           
           <!-- Size Cell -->
-          <td class="py-3 sm:py-4 px-3 sm:px-6 text-slate-400 text-sm font-medium font-sans">
+          <td class="py-3 sm:py-4 px-6 text-slate-400 text-sm font-medium font-sans whitespace-nowrap tabular-nums">
             ${sizeDisplay}
           </td>
           
           <!-- Actions Cell -->
-          <td class="py-3 sm:py-4 px-3 sm:px-6 text-right relative">
-            
-            <!-- Ellipsis icon for mobile touch accessibility -->
-            <button class="ellipsis-btn md:hidden p-1.5 text-slate-500 hover:text-white rounded-lg hover:bg-slate-900/80 transition-all inline-block align-middle">
-              ${Icons.ellipsis}
-            </button>
-
+          <td class="py-3 sm:py-4 px-6 text-right relative">
             <!-- Hover Actions for Desktop -->
             <div class="hidden md:flex items-center justify-end space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
               ${!item.isFolder ? `
-                <button title="Download" class="action-btn p-2 text-slate-400 hover:text-emerald-400 rounded-lg hover:bg-slate-900/60 active:scale-95 transition-all">
+                <button title="Download" aria-label="Download ${item.name}" class="action-btn action-download p-2 text-slate-400 hover:text-emerald-400 rounded-lg hover:bg-slate-900/60 active:scale-95 transition-all">
                   ${Icons.download}
                 </button>
               ` : ''}
-              <button title="Copy Path" class="action-btn p-2 text-slate-400 hover:text-emerald-400 rounded-lg hover:bg-slate-900/60 active:scale-95 transition-all">
+              <button title="Copy Path" aria-label="Copy path of ${item.name}" class="action-btn action-copy p-2 text-slate-400 hover:text-emerald-400 rounded-lg hover:bg-slate-900/60 active:scale-95 transition-all">
                 ${Icons.copy}
               </button>
-              <button title="Delete" class="action-btn p-2 text-slate-400 hover:text-red-400 rounded-lg hover:bg-slate-900/60 active:scale-95 transition-all">
+              <button title="Delete" aria-label="Delete ${item.name}" class="action-btn action-delete p-2 text-slate-400 hover:text-red-400 rounded-lg hover:bg-slate-900/60 active:scale-95 transition-all">
                 ${Icons.delete}
               </button>
             </div>
           </td>
         `;
+        setupItemEvents(desktopRow, item);
+        dom.fileListBodyDesktop.appendChild(desktopRow);
 
-        // Register actions on desktop hover triggers
-        const btns = row.querySelectorAll('.action-btn');
-        let btnIdx = 0;
-        
-        if (!item.isFolder) {
-          const dlBtn = btns[btnIdx++];
-          dlBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            downloadFileContent(item.path, item.name);
-          });
-        }
-
-        const copyBtn = btns[btnIdx++];
-        copyBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          navigator.clipboard.writeText(item.path);
-          showToast('Path copied to clipboard!');
-        });
-
-        const deleteBtn = btns[btnIdx++];
-        deleteBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          promptDelete(item);
-        });
-
-        // Ellipsis button hook for touch layout toggling
-        const ellipsis = row.querySelector('.ellipsis-btn');
-        if (ellipsis) {
-          ellipsis.addEventListener('click', (e) => {
-            e.stopPropagation();
-            openContextMenu(item);
-          });
-        }
-
-        dom.fileListBody.appendChild(row);
+        // ==========================================
+        // 2. MOBILE CARD RENDER (<div> block)
+        // ==========================================
+        const mobileCard = document.createElement('div');
+        mobileCard.className = 'group flex items-center justify-between p-4 cursor-pointer select-none active:bg-slate-900/20 file-row relative';
+        mobileCard.innerHTML = `
+          <div class="flex items-center space-x-3.5 min-w-0 flex-1">
+            <span class="flex-shrink-0">${iconHtml}</span>
+            <div class="min-w-0 flex-1">
+              <h4 class="text-white font-medium text-sm truncate font-sans">${nameDisplay}</h4>
+              <p class="text-xs text-slate-400 mt-1 font-sans tabular-nums">${sizeDisplay}</p>
+            </div>
+          </div>
+          <button class="ellipsis-btn p-2 text-slate-500 hover:text-white rounded-xl hover:bg-slate-900/80 transition-all flex-shrink-0" aria-label="Open context menu for ${item.name}">
+            ${Icons.ellipsis}
+          </button>
+        `;
+        setupItemEvents(mobileCard, item);
+        dom.fileListMobile.appendChild(mobileCard);
       });
 
       // Update statistics panel
@@ -1561,7 +1617,7 @@
       }
 
       // Read file and parse base64
-      showLoading(`Encoding ${file.name} (${formatBytes(file.size)})...`);
+      showLoading(`Encoding ${file.name} (${formatBytes(file.size)})…`);
       try {
         const base64Content = await convertFileToBase64(file);
         
