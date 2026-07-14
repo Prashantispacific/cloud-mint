@@ -19,6 +19,7 @@ Imagine you want a private storage space like Google Drive or Dropbox, but you d
 2. **Absolute Privacy:** Your files are stored in your own private repository. No middleman scans your files for advertising data.
 3. **No Heavy Hosting:** There is no running database, no heavy server to maintain, and no backend software that can break. It is a "Serverless" website.
 4. **Ephemerality:** The secret key is never saved permanently on the computer. The moment you close the tab, your keys vanish from the browser's memory.
+5. **Universal Portability:** You can access, upload, and download files from **any device, anywhere in the world** via a standard browser tab. No VPN configurations or dangerous network port forwardings are required.
 
 ---
 

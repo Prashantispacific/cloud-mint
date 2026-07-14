@@ -2,6 +2,10 @@
 
 Cloud Mint is a premium, minimalist, single-user file manager hosted on Netlify, using a private GitHub repository as the secure storage backend. It communicates directly with the GitHub API from the client to stream files up to 100MB, avoiding serverless timeout and payload constraints.
 
+### 🌟 The Core USP (Problem & Solution)
+* **The Problem:** Traditional personal file storage solutions usually require hosting heavy databases, running complex physical home servers (like a NAS) that are hard to secure, or paying monthly subscriptions to large corporations that track and scan your personal documents. Furthermore, accessing home storage securely from a mobile device while on the go often requires configuring complex VPNs or dangerous port forwarding.
+* **The Solution:** Cloud Mint is a **portable, zero-maintenance file vault** accessible from **any device, anywhere in the world** via a simple browser tab. By leveraging free serverless hosting (Netlify) and secure private repositories (GitHub), it provides an instant on-the-go portal. You can securely upload, download, search, and manage your private files from any phone, tablet, or desktop with absolute privacy and zero configuration overhead.
+
 ---
 
 ## Documentation
