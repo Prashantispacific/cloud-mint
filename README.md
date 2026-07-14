@@ -94,22 +94,33 @@ Alternatively, you can generate a standard bcrypt hash (e.g., using online tools
 
 You can run Cloud Mint locally using the Netlify CLI to simulate the production serverless environment.
 
-1. **Install Netlify CLI globally:**
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/Prashantispacific/cloud-mint.git
+   cd cloud-mint
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Install Netlify CLI globally (if not already installed):**
    ```bash
    npm install -g netlify-cli
    ```
 
-2. **Create a `.env` file in the root folder:**
-   ```env
-   MINT_HASHED_PASSWORD=37943d0408544c7b6c7bb8cfa826978438db02b7405e3f4e1f76d90042a98f1f
-   MINT_GITHUB_PAT=ghp_YourPersonalAccessTokenHere
-   MINT_GITHUB_OWNER=your-github-username
-   MINT_GITHUB_REPO=your-private-repo
-   MINT_GITHUB_BRANCH=main
-   ```
-
-3. **Start the local simulation server:**
+4. **Set up your environment variables:**
+   Copy the example environment template to `.env`:
    ```bash
+   cp .env.example .env
+   ```
+   Open `.env` and fill in your details (hashed password, GitHub PAT, owner, and repository name).
+
+5. **Start the local simulation server:**
+   ```bash
+   npm run dev
+   # or
    netlify dev
    ```
    Open `http://localhost:8888` in your browser. Enter your plaintext password (e.g. `super-secret-vault`) to decrypt your storage backend!
