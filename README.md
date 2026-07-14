@@ -4,6 +4,14 @@ Cloud Mint is a premium, minimalist, single-user file manager hosted on Netlify,
 
 ---
 
+## Documentation
+
+To help you get set up and understand the system, please refer to the following files:
+- 🚀 **[Setup & Deployment Guide](setup.md)**: A step-by-step walkthrough to configure your private storage repo, generate a GitHub Personal Access Token (PAT), hash your password, and deploy the application to Netlify.
+- 📘 **[Layman to Advanced Guide](guide.md)**: A detailed user guide explaining basic usage (uploading/downloading/creating folders) as well as the advanced developer architecture (capping limits, Local Path Trie parsing, and authenticated binary downloads).
+
+---
+
 ## Features
 
 - **Direct GitHub API Streaming:** Bypasses Netlify's 6MB serverless payload limit for uploads and deletions.
@@ -24,10 +32,14 @@ Cloud Mint is a premium, minimalist, single-user file manager hosted on Netlify,
 │   └── functions/
 │       └── auth.js         # Secure proxy gateway (v1 Serverless function)
 ├── public/
+│   ├── index.css           # Styling system & glassmorphism effects
 │   └── index.html          # Core single-page application & Vanilla JS runtime
+├── .env.example            # Environment variables configuration template
 ├── .gitignore              # Local dev exclusions
+├── guide.md                # Operating and architectural developer guide
 ├── netlify.toml            # Build / publish setup mapping
-└── package.json            # Node dependency metadata (bcryptjs fallback support)
+├── package.json            # Node dependency metadata (bcryptjs fallback support)
+└── setup.md                # Deployment and configuration setup guide
 ```
 
 ---
