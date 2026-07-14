@@ -29,7 +29,7 @@ Imagine you want a private storage space like Google Drive or Dropbox, but you d
 │                      Web Browser                       │
 │  ┌───────────────┐ ┌───────────────┐ ┌──────────────┐  │
 │  │   UI View     │ │ Local Trie    │ │ File Upload  │  │
-│  │ (TailwindCSS) │ │ File Parser   │ │ (< 45MB check)│  │
+│  │ (TailwindCSS) │ │ File Parser   │ │ (< 25MB check)│  │
 │  └───────┬───────┘ └───────▲───────┘ └──────┬───────┘  │
 └──────────┼─────────────────┼────────────────┼──────────┘
            │ 1. Password     │ 3. Read Tree   │ 4. Direct Upload
@@ -84,10 +84,10 @@ Most serverless platforms (including Netlify and AWS Lambda) enforce a request s
 - Deletions are sent via direct `DELETE` requests.
 - This architectural design shifts all upload workload onto the user's browser, permitting file transfers up to GitHub's individual API ceiling without ever hitting Netlify's limitations.
 
-### 2. Client-Side 45MB Capping
+### 2. Client-Side 25MB Capping
 While the GitHub API theoretically allows files up to 100MB via the Contents API, encoding massive files to Base64 in a single-threaded browser environment causes the page main thread to freeze, resulting in a bad user experience. Furthermore, extremely large POST payloads can lead to API network timeouts.
 - Cloud Mint instantly checks `File.size` during the file selection/drag event.
-- If it exceeds **45MB**, it aborts immediately and renders a custom alert overlay.
+- If it exceeds **25MB**, it aborts immediately and renders a custom alert overlay.
 
 ### 3. Local Path Trie Parsing (Caching & Speed)
 Querying the GitHub API for every folder click is slow and exhausts the authenticated rate limit (5,000 requests/hour).

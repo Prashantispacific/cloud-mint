@@ -1,13 +1,13 @@
 # Cloud Mint 🍃
 
-Cloud Mint is a premium, minimalist, single-user file manager hosted on Netlify, using a private GitHub repository as the secure storage backend. It communicates directly with the GitHub API from the client to stream files up to 45MB, avoiding serverless timeout and payload constraints.
+Cloud Mint is a premium, minimalist, single-user file manager hosted on Netlify, using a private GitHub repository as the secure storage backend. It communicates directly with the GitHub API from the client to stream files up to 25MB, avoiding serverless timeout and payload constraints.
 
 ---
 
 ## Features
 
 - **Direct GitHub API Streaming:** Bypasses Netlify's 6MB serverless payload limit for uploads and deletions.
-- **Strict Size Control:** Intercepts file size client-side and triggers a polished modal warning if a file exceeds 45MB.
+- **Strict Size Control:** Intercepts file size client-side and triggers a polished modal warning if a file exceeds 25MB.
 - **Secure Authentication Proxy:** Netlify Serverless Function `/api/auth` validates access keys and proxy-delivers the GitHub PAT.
 - **Ephemeral Session Storage:** Personal Access Token is held strictly in browser `sessionStorage` (wiped when tab closes).
 - **Cinematic Dark Design:** Slate backdrop with vibrant emerald accents, glassmorphic card widgets, and custom hover/long-press interactions.

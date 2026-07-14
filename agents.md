@@ -23,9 +23,9 @@ graph TD
 - **Problem:** Netlify Serverless Functions have a strict **6MB** request payload ceiling. Routing file uploads through a serverless function proxy would trigger crashes for files larger than 6MB.
 - **Solution:** We designed the Netlify function to act strictly as a gatekeeper for authentication. Upon successful key validation, it returns the GitHub Personal Access Token (PAT) to the client. All file creations, list tree fetches, and deletions stream directly from the browser's JavaScript engine to the GitHub REST API (`api.github.com`).
 
-### 2. Client-Side Size Capping (45MB Safety Ceiling)
+### 2. Client-Side Size Capping (25MB Safety Ceiling)
 - **Problem:** Base64-encoding extremely large files in single-threaded browser JS can freeze the window, and large HTTP payloads risk API timeouts or connection drops.
-- **Solution:** Instantly intercept file selection in the DOM using `File.size`. If the file exceeds `45MB` (47,185,920 bytes), the upload is aborted, and a sleek, modal error panel is rendered, maintaining application responsiveness.
+- **Solution:** Instantly intercept file selection in the DOM using `File.size`. If the file exceeds `25MB` (26,214,400 bytes), the upload is aborted, and a sleek, modal error panel is rendered, maintaining application responsiveness.
 
 ### 3. Authenticated Blob Downloads
 - **Problem:** A private repository's file download URL (`raw.githubusercontent.com/...`) returns a `404 Not Found` if accessed in a standard browser tab via `window.open`, as it lacks authorization.
