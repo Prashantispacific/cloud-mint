@@ -23,19 +23,25 @@ graph TD
 - **Problem:** Netlify Serverless Functions have a strict **6MB** request payload ceiling. Routing file uploads through a serverless function proxy would trigger crashes for files larger than 6MB.
 - **Solution:** We designed the Netlify function to act strictly as a gatekeeper for authentication. Upon successful key validation, it returns the GitHub Personal Access Token (PAT) to the client. All file creations, list tree fetches, and deletions stream directly from the browser's JavaScript engine to the GitHub REST API (`api.github.com`).
 
-### 2. Client-Side Size Capping (25MB Safety Ceiling)
-- **Problem:** Base64-encoding extremely large files in single-threaded browser JS can freeze the window, and large HTTP payloads risk API timeouts or connection drops.
-- **Solution:** Instantly intercept file selection in the DOM using `File.size`. If the file exceeds `25MB` (26,214,400 bytes), the upload is aborted, and a sleek, modal error panel is rendered, maintaining application responsiveness.
+### 2. Dual-Path Upload Engine (Contents API vs Git Data API)
+- **Problem:** The GitHub Contents API (`PUT /contents/...`) silently fails on files larger than ~7MB. The base64-encoded payload bloats file size by ~33%, and the Contents API was never designed for large binary uploads — it times out or returns "Bad Credentials" errors after several minutes of buffering.
+- **Solution:** Cloud Mint now employs a **dual-path upload dispatcher**:
+  - **Path A (≤7MB):** Uses the fast single-request Contents API for small files.
+  - **Path B (>7MB, up to 100MB):** Uses GitHub's **Git Data API** — a 4-step atomic commit pipeline: `POST /git/blobs` → `GET /git/ref` → `POST /git/trees` → `POST /git/commits` → `PATCH /git/refs`. This is the same mechanism `git push` uses internally and supports blobs up to 100MB.
 
-### 3. Authenticated Blob Downloads
+### 3. Client-Side Size Capping (100MB GitHub API Ceiling)
+- **Problem:** Base64-encoding extremely large files in single-threaded browser JS can freeze the window, and large HTTP payloads risk API timeouts or connection drops.
+- **Solution:** Instantly intercept file selection in the DOM using `File.size`. If the file exceeds `100MB` (104,857,600 bytes), the upload is aborted, and a sleek, modal error panel is rendered, maintaining application responsiveness.
+
+### 4. Authenticated Blob Downloads
 - **Problem:** A private repository's file download URL (`raw.githubusercontent.com/...`) returns a `404 Not Found` if accessed in a standard browser tab via `window.open`, as it lacks authorization.
 - **Solution:** We implemented an in-memory authenticated download engine. The client issues a `fetch` request to the GitHub Contents API with the custom `Accept: application/vnd.github.v3.raw` header and the authorization bearer token. The response is converted into a native browser Blob and trigger-clicked using a temporary `<a>` element. This guarantees secure downloads without exposing the raw URL.
 
-### 4. Native SHA-256 Password Cryptography
+### 5. Native SHA-256 Password Cryptography
 - **Problem:** Installing heavy encryption libraries (like native C++ `bcrypt`) in serverless functions often triggers deployment failures due to architecture compilation mismatch, and adds package bloat.
 - **Solution:** The authentication function defaults to Node's native `crypto` module to perform **SHA-256** hash comparisons. It uses `crypto.timingSafeEqual` to avoid timing side-channel attacks. A pure-JS fallback for `bcryptjs` is included if the environment variable hash matches a bcrypt pattern, keeping the deployment light and robust.
 
-### 5. Local Path Trie/Tree Parsing
+### 6. Local Path Trie/Tree Parsing
 - **Problem:** Making multiple API calls to traverse folders is slow and exhausts the GitHub API rate limit (5,000 requests/hour for authenticated users).
 - **Solution:** On initial load or refresh, Cloud Mint queries the **Git Trees API** with `recursive=true`. It fetches the entire repository structure in a single API call, parses the flat array into a hierarchical Trie structure (`FileNode` class) in browser RAM, and handles all navigation and searching locally.
 

@@ -328,7 +328,7 @@
           </span>
           <h3 class="text-lg font-display font-semibold text-white" id="error-title">Upload Aborted</h3>
         </div>
-        <p class="text-slate-300 text-sm leading-relaxed mb-6" id="error-message">This file exceeds the 25MB security ceiling for client-side API streaming. Cloud Mint requires direct browser-to-GitHub streaming for transfers under 25MB to maintain performance integrity.</p>
+        <p class="text-slate-300 text-sm leading-relaxed mb-6" id="error-message">This file exceeds the 100 MB GitHub API ceiling. Cloud Mint uses GitHub's Git Data API for reliable transfers up to 100 MB.</p>
         <div class="flex justify-end">
           <button id="btn-error-close" class="px-5 py-2.5 bg-slate-900 border border-slate-800 hover:border-slate-700 text-white rounded-xl text-sm font-semibold active:scale-95 transition-all">Understood</button>
         </div>
@@ -608,12 +608,38 @@
       render();
     }
 
-    // Upload file directly to GitHub API (Bypassing Netlify proxy)
+    // ============================================================
+    // DUAL-PATH UPLOAD ENGINE
+    // Path A: Contents API  — fast, for files ≤ 7 MB
+    // Path B: Blobs+Trees+Commits API — reliable, for files up to 100 MB
+    // ============================================================
+
+    const CONTENTS_API_THRESHOLD = 7 * 1024 * 1024; // 7 MB boundary
+
+    // Master upload dispatcher
     async function uploadToGithub(file, base64Content, existingSha = null) {
-      showLoading(`Streaming ${file.name} to storage...`);
       const targetPath = state.currentPath ? `${state.currentPath}/${file.name}` : file.name;
+
+      try {
+        if (file.size <= CONTENTS_API_THRESHOLD) {
+          // === Fast Path: Contents API (small files) ===
+          await uploadViaContentsApi(file, targetPath, base64Content, existingSha);
+        } else {
+          // === Reliable Path: Git Data API (large files) ===
+          await uploadViaBlobsApi(file, targetPath, base64Content);
+        }
+        await fetchRepoTree(); // Reload tree structure
+      } catch (err) {
+        showError('Upload Failure', `Could not upload <span class="font-semibold text-white">${file.name}</span> (${formatBytes(file.size)}) to GitHub:<br><br><span class="font-mono text-xs text-red-300">${err.message}</span>`);
+        hideLoading();
+      }
+    }
+
+    // Path A: GitHub Contents API (PUT /repos/.../contents/...)
+    async function uploadViaContentsApi(file, targetPath, base64Content, existingSha) {
+      showLoading(`Streaming ${file.name} to storage...`);
       const url = `https://api.github.com/repos/${state.owner}/${state.repo}/contents/${targetPath}`;
-      
+
       const payload = {
         message: `Upload ${file.name} via Cloud Mint`,
         content: base64Content,
@@ -624,23 +650,114 @@
         payload.sha = existingSha;
       }
 
-      try {
-        const response = await fetch(url, {
-          method: 'PUT',
-          headers: getApiHeaders(),
-          body: JSON.stringify(payload)
-        });
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: getApiHeaders(),
+        body: JSON.stringify(payload)
+      });
 
-        if (!response.ok) {
-          const err = await response.json();
-          throw new Error(err.message || 'API upload error');
-        }
-
-        await fetchRepoTree(); // Reload tree structure
-      } catch (err) {
-        showError('Upload Failure', `Could not stream file directly to GitHub API: <br><br><span class="font-mono text-xs text-red-300">${err.message}</span>`);
-        hideLoading();
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || 'Contents API upload error');
       }
+    }
+
+    // Path B: Git Data API — Blobs → Tree → Commit → Ref update
+    // This bypasses the Contents API size ceiling entirely.
+    // GitHub Blobs API supports up to 100 MB per blob.
+    async function uploadViaBlobsApi(file, targetPath, base64Content) {
+      const apiBase = `https://api.github.com/repos/${state.owner}/${state.repo}`;
+      const hdrs = getApiHeaders();
+
+      // Step 1/4: Create the blob
+      showLoading(`Step 1/4 — Creating binary blob for ${file.name}...`);
+      const blobRes = await fetch(`${apiBase}/git/blobs`, {
+        method: 'POST',
+        headers: hdrs,
+        body: JSON.stringify({
+          content: base64Content,
+          encoding: 'base64'
+        })
+      });
+      if (!blobRes.ok) {
+        const e = await blobRes.json();
+        throw new Error(e.message || 'Blob creation failed');
+      }
+      const blobData = await blobRes.json();
+      const blobSha = blobData.sha;
+
+      // Step 2/4: Get the latest commit SHA on the target branch
+      showLoading(`Step 2/4 — Reading branch head...`);
+      const refRes = await fetch(`${apiBase}/git/ref/heads/${state.branch}`, { headers: hdrs });
+      if (!refRes.ok) {
+        const e = await refRes.json();
+        throw new Error(e.message || 'Could not read branch reference');
+      }
+      const refData = await refRes.json();
+      const latestCommitSha = refData.object.sha;
+
+      // Get the tree SHA of the latest commit
+      const commitRes = await fetch(`${apiBase}/git/commits/${latestCommitSha}`, { headers: hdrs });
+      if (!commitRes.ok) {
+        const e = await commitRes.json();
+        throw new Error(e.message || 'Could not read latest commit');
+      }
+      const commitData = await commitRes.json();
+      const baseTreeSha = commitData.tree.sha;
+
+      // Step 3/4: Create a new tree with the blob inserted at the target path
+      showLoading(`Step 3/4 — Building commit tree...`);
+      const treeRes = await fetch(`${apiBase}/git/trees`, {
+        method: 'POST',
+        headers: hdrs,
+        body: JSON.stringify({
+          base_tree: baseTreeSha,
+          tree: [{
+            path: targetPath,
+            mode: '100644',   // Regular file
+            type: 'blob',
+            sha: blobSha
+          }]
+        })
+      });
+      if (!treeRes.ok) {
+        const e = await treeRes.json();
+        throw new Error(e.message || 'Tree creation failed');
+      }
+      const treeData = await treeRes.json();
+
+      // Step 4/4: Create a commit and fast-forward the branch ref
+      showLoading(`Step 4/4 — Committing ${file.name}...`);
+      const newCommitRes = await fetch(`${apiBase}/git/commits`, {
+        method: 'POST',
+        headers: hdrs,
+        body: JSON.stringify({
+          message: `Upload ${file.name} via Cloud Mint`,
+          tree: treeData.sha,
+          parents: [latestCommitSha]
+        })
+      });
+      if (!newCommitRes.ok) {
+        const e = await newCommitRes.json();
+        throw new Error(e.message || 'Commit creation failed');
+      }
+      const newCommitData = await newCommitRes.json();
+
+      // Update the branch reference to point at the new commit
+      const updateRefRes = await fetch(`${apiBase}/git/refs/heads/${state.branch}`, {
+        method: 'PATCH',
+        headers: hdrs,
+        body: JSON.stringify({
+          sha: newCommitData.sha,
+          force: false
+        })
+      });
+      if (!updateRefRes.ok) {
+        const e = await updateRefRes.json();
+        throw new Error(e.message || 'Branch ref update failed');
+      }
+
+      showLoading(`Upload complete — syncing vault...`);
     }
 
     // Delete single file/folder
@@ -1426,22 +1543,21 @@
 
     // File Processing and size capping handler
     async function handleFileUpload(file) {
-      const maxLimit = 25 * 1024 * 1024; // 25 Megabytes (matching GitHub web limit for stability)
+      const maxLimit = 100 * 1024 * 1024; // 100 MB — GitHub Blobs API hard ceiling
       if (file.size > maxLimit) {
         showError(
           'File Size Limit Exceeded',
-          `The selected file <span class="font-semibold text-white">${file.name}</span> is ${formatBytes(file.size)}. Cloud Mint caps uploads strictly at <span class="text-emerald-400 font-semibold">25 MB</span> to prevent connection drops and browser freezes during Base64 encoding.`
+          `The selected file <span class="font-semibold text-white">${file.name}</span> is ${formatBytes(file.size)}. GitHub's API enforces a hard <span class="text-emerald-400 font-semibold">100 MB</span> per-file limit. Files larger than this cannot be uploaded via the API.`
         );
         return;
       }
 
-      const warningLimit = 8 * 1024 * 1024; // 8 Megabytes
-      if (file.size > warningLimit) {
-        showToast('Large file upload: Files > 8MB may time out on slower connections due to GitHub gateway limits.');
+      if (file.size > CONTENTS_API_THRESHOLD) {
+        showToast(`Large file detected (${formatBytes(file.size)}) — using Git Data API for reliable upload.`);
       }
 
       // Read file and parse base64
-      showLoading(`Encrypting & packing: ${file.name}...`);
+      showLoading(`Encoding ${file.name} (${formatBytes(file.size)})...`);
       try {
         const base64Content = await convertFileToBase64(file);
         
@@ -1454,7 +1570,7 @@
 
         await uploadToGithub(file, base64Content, existingSha);
       } catch (err) {
-        showError('Encryption Error', `Could not read file locally: ${err.message}`);
+        showError('Encoding Error', `Could not read file locally: ${err.message}`);
         hideLoading();
       }
     }
