@@ -132,10 +132,13 @@ Once your site is deployed, bind your secrets:
 1. In the Netlify Dashboard, navigate to your site.
 2. Go to **Site Configuration > Environment variables**.
 3. Click **Add a variable** and configure the variables:
-   - `MINT_HASHED_PASSWORD` (64-character SHA-256 password hash)
-   - `MINT_GITHUB_PAT` (GitHub PAT token)
-   - `MINT_GITHUB_OWNER` (Your GitHub Username)
-   - `MINT_GITHUB_REPO` (Your Private Vault Repository Name)
-   - `MINT_GITHUB_BRANCH` (Optional, e.g. `main`)
+   - `MINT_HASHED_PASSWORD` (64-character SHA-256 hex signature or a bcrypt hash of your master password)
+   - `MINT_GITHUB_PAT` (GitHub Personal Access Token with `repo` scope or fine-grained `Contents` read/write access)
+   - `MINT_GITHUB_OWNER` (*Optional* — Your GitHub Username. If left blank, you will be prompted for it on the login page.)
+   - `MINT_GITHUB_REPO` (*Optional* — Your Private Vault Repository Name. If left blank, you will be prompted for it on the login page.)
+   - `MINT_GITHUB_BRANCH` (*Optional* — Target branch, defaults to `main`. If owner/repo are blank, you can also customize this on the login page.)
 4. Trigger a new deploy or wait for Netlify to propagate the environment variables (typically takes a few seconds).
 5. Open your live Netlify site URL, unlock your vault, and enjoy your personal private file manager!
+
+> [!TIP]
+> **Dynamic Repository Connection:** By leaving `MINT_GITHUB_OWNER` and `MINT_GITHUB_REPO` unconfigured in Netlify, your Cloud Mint instance acts as a flexible client. The UI will automatically display repository and branch input fields, allowing you to log into different repositories and branches dynamically using the same deployment.

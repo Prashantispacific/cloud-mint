@@ -29,7 +29,7 @@ Imagine you want a private storage space like Google Drive or Dropbox, but you d
 │                      Web Browser                       │
 │  ┌───────────────┐ ┌───────────────┐ ┌──────────────┐  │
 │  │   UI View     │ │ Local Trie    │ │ File Upload  │  │
-│  │ (TailwindCSS) │ │ File Parser   │ │ (< 25MB check)│  │
+│  │ (TailwindCSS) │ │ File Parser   │ │(< 100MB check)│ │
 │  └───────┬───────┘ └───────▲───────┘ └──────┬───────┘  │
 └──────────┼─────────────────┼────────────────┼──────────┘
            │ 1. Password     │ 3. Read Tree   │ 4. Direct Upload
@@ -45,7 +45,7 @@ Imagine you want a private storage space like Google Drive or Dropbox, but you d
 ```
 
 The system is split into three main parts:
-1. **The Client (Browser):** The user interface built with HTML5, CSS (Tailwind), and Javascript. It runs entirely inside the user's browser.
+1. **The Client (Browser):** The user interface built with HTML5, custom CSS, and Javascript. It runs entirely inside the user's browser and performs direct streaming to GitHub.
 2. **The Security Gatekeeper (Netlify Function):** A tiny backend serverless function (`/netlify/functions/auth.js`) that checks the password. It stores your raw GitHub key (Personal Access Token) securely in Netlify's cloud. It only hands this key to the browser if the user enters the correct password.
 3. **The Data Vault (GitHub API):** The browser uses the retrieved key to talk directly to GitHub to save, read, or delete files.
 
@@ -75,19 +75,22 @@ The system is split into three main parts:
 ## Part 4: Advanced Architecture (For Developers)
 
 ### 1. Direct Client-to-GitHub Streaming (Bypassing Server Constraints)
-Most serverless platforms (including Netlify and AWS Lambda) enforce a request size limit of **6MB**. If you try to upload a 20MB file by routing it through a serverless function, the request will immediately fail with a `Payload Too Large (413)` error.
+Most serverless platforms (including Netlify and AWS Lambda) enforce a request size limit of **6MB**. If you try to upload a large file by routing it through a serverless function, the request will immediately fail with a `Payload Too Large (413)` error.
 
 **Cloud Mint bypasses this** by doing direct client-to-API requests:
 - The Netlify function only handles the password check and returns the GitHub Personal Access Token (PAT).
 - The frontend browser JavaScript catches the PAT and caches it strictly in `sessionStorage` (RAM-based, vanishes when the tab closes).
-- When a file is uploaded, the browser converts the file to a Base64 string locally and issues a `PUT` request directly to `https://api.github.com/repos/{owner}/{repo}/contents/{path}`.
+- Depending on the file size, Cloud Mint employs a **Dual-Path Upload Engine** directly from the browser:
+  - **Path A (≤7MB):** Uses the fast single-request Contents API (`PUT /repos/{owner}/{repo}/contents/{path}`).
+  - **Path B (>7MB, up to 100MB):** Uses GitHub's **Git Data API** — a 4-step atomic commit pipeline: `POST /git/blobs` → `GET /git/ref` → `POST /git/trees` → `POST /git/commits` → `PATCH /git/refs`. This is the exact commit-push workflow used by the native git utility, enabling robust streaming of large files.
 - Deletions are sent via direct `DELETE` requests.
 - This architectural design shifts all upload workload onto the user's browser, permitting file transfers up to GitHub's individual API ceiling without ever hitting Netlify's limitations.
 
-### 2. Client-Side 25MB Capping
-While the GitHub API theoretically allows files up to 100MB via the Contents API, encoding massive files to Base64 in a single-threaded browser environment causes the page main thread to freeze, resulting in a bad user experience. Furthermore, extremely large POST payloads can lead to API network timeouts.
-- Cloud Mint instantly checks `File.size` during the file selection/drag event.
-- If it exceeds **25MB**, it aborts immediately and renders a custom alert overlay.
+### 2. Client-Side 100MB Capping and Dual-Path Dispatching
+While GitHub allows files up to 100MB, uploading files larger than 100MB via the REST API is not supported by GitHub. Large binary files can also cause performance bottlenecks or timeout errors during base64 conversion and HTTP transmission.
+- **Immediate Interception:** Cloud Mint intercepts file selection in the DOM and reads `File.size`.
+- **Hard Limit:** If the file size exceeds **100MB** (104,857,600 bytes), the upload is immediately aborted with a sleek modal warning panel.
+- **Smart Dispatching:** It dynamically routes the upload based on the 7MB threshold. Files under 7MB are sent via the fast Contents API, whereas files between 7MB and 100MB are pushed through the Git Data API to prevent timeout errors and ensure commit atomicity.
 
 ### 3. Local Path Trie Parsing (Caching & Speed)
 Querying the GitHub API for every folder click is slow and exhausts the authenticated rate limit (5,000 requests/hour).
